@@ -167,7 +167,7 @@ Here we will provide our pre-built kNN graphs and NSG index files used in our pa
 
 |  Dataset  |  kNN Graph  |  SSG Index  |
 |:---------:|:---:|:---:|
-| SIFT1M    | [sift_200nn.knng](http://downloads.zjulearning.org:8081/ssg/sift_200nn.knng) | [sift.ssg](http://downloads.zjulearning.org:8081/ssg/sift.ssg)  |
-| GIST1M    | [gist_400nn.knng](http://downloads.zjulearning.org:8081/ssg/gist_400nn.knng) | [gist.ssg](http://downloads.zjulearning.org:8081/ssg/gist.ssg)  |
-| Crawl     | [crawl_400nn.knng](http://downloads.zjulearning.org:8081/ssg/crawl_400nn.knng) | [crawl.ssg](http://downloads.zjulearning.org:8081/ssg/crawl.ssg)  |
-| GloVe-100 | [glove_400nn.knng](http://downloads.zjulearning.org:8081/ssg/glove-100_400nn.knng) | [glove.ssg](http://downloads.zjulearning.org:8081/ssg/glove-100.ssg)  |
+| SIFT1M    | [sift_200nn.knng](http://downloads.zjulearning.org.cn/ssg/sift_200nn.knng) | [sift.ssg](http://downloads.zjulearning.org.cn/ssg/sift.ssg)  |
+| GIST1M    | [gist_400nn.knng](http://downloads.zjulearning.org.cn/ssg/gist_400nn.knng) | [gist.ssg](http://downloads.zjulearning.org.cn/ssg/gist.ssg)  |
+| Crawl     | [crawl_400nn.knng](http://downloads.zjulearning.org.cn/ssg/crawl_400nn.knng) | [crawl.ssg](http://downloads.zjulearning.org.cn/ssg/crawl.ssg)  |
+| GloVe-100 | [glove_400nn.knng](http://downloads.zjulearning.org.cn/ssg/glove-100_400nn.knng) | [glove.ssg](http://downloads.zjulearning.org.cn/ssg/glove-100.ssg)  |
