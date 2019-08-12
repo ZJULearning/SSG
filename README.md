@@ -15,7 +15,7 @@ Benchmark datasets
 | GloVe-100 | [glove-100.tar.gz](http://downloads.zjulearning.org.cn/data/glove-100.tar.gz) (424MB) | 100       | 1,183,514       | 10,000           | [original website](https://nlp.stanford.edu/projects/glove/)   |
 | Deep100M  | deep100m.tar.gz* (34GB)  | 96        | 100,000,000     | 10,000           | [original website](http://sites.skoltech.ru/compvision/noimi/) |
 
-* For Deep100M we will provide the dowmload link upon request
+* For Deep100M we will provide the download link upon request
 
 ANNS performance
 ------
