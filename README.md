@@ -169,7 +169,7 @@ $ ./test_ssg_index glove-100.fvecs glove-100_400nn.knng 500 50 60 glove-100.ssg
 
 ## Pre-built kNN Graph and NSG Index
 
-Here we will provide our pre-built kNN graphs and NSG index files used in our papar's experiments. (The files will be available soon when our public server is ready.)
+Here we provide our pre-built kNN graphs and SSG index files used in our papar's experiments. 
 
 |  Dataset  |  kNN Graph  |  SSG Index  |
 |:---------:|:---:|:---:|
