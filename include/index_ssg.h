@@ -32,7 +32,7 @@ class IndexSSG : public Index {
                       const Parameters &parameters, unsigned *indices) override;
   void SearchWithOptGraph(const float *query, size_t K,
                           const Parameters &parameters, unsigned *indices);
-  void OptimizeGraph(float *data);
+  void OptimizeGraph(const float *data);
 
  protected:
   typedef std::vector<std::vector<unsigned>> CompactGraph;
