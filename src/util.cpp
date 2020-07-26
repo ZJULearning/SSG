@@ -1,8 +1,7 @@
 #include "util.h"
 
-#include <malloc.h>
-
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iostream>
