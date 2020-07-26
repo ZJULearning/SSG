@@ -21,6 +21,18 @@ class Parameters {
     params[name] = sstream.str();
   }
 
+  // NOTE: pybind11 do not support template functions.
+  // Since add auto type convertion is not trival,
+  // we just return string directly as a work around.
+  inline std::string GetRaw(const std::string &name) const {
+    auto item = params.find(name);
+    if (item == params.end()) {
+      throw std::invalid_argument("Invalid parameter name.");
+    } else {
+      return item->second;
+    }
+  }
+
   template <typename ParamType>
   inline ParamType Get(const std::string &name) const {
     auto item = params.find(name);
