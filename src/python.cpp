@@ -1,5 +1,3 @@
-#include <stdlib.h>
-
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
@@ -66,11 +64,12 @@ PYBIND11_MODULE(pyssg, m) {
 
     // IndexSSG
     py::class_<IndexSSG>(m, "IndexSSG")
-        .def(py::init([](size_t dim, size_t num_data, Metric metric=Metric::FAST_L2) {
+        .def(py::init([](size_t dim, size_t num_data,
+                         Metric metric=Metric::FAST_L2) {
             IndexRandom init_index(dim, num_data);
             IndexSSG* index = new IndexSSG(dim, num_data, metric, &init_index);
             return index;
-        }))
+        }), py::arg("dim"), py::arg("num_data"), py::arg("metric") = Metric::FAST_L2)
 
         // .def("build", &IndexSSG::Build)  # Currently only search
 
@@ -91,8 +90,7 @@ PYBIND11_MODULE(pyssg, m) {
 
             @return a list contains K neighbors' indices (start from 0)
          */
-        .def("search", [](IndexSSG& index,
-                          array query, size_t k, unsigned l)
+        .def("search", [](IndexSSG& index, array query, size_t k, unsigned l)
                           -> std::vector<unsigned> {
             // NOTE: This lambda function will convert numpy array to raw pointer
 
