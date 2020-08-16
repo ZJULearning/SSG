@@ -2,15 +2,15 @@
 
 #include <omp.h>
 #include <bitset>
-#include <boost/dynamic_bitset.hpp>
 #include <chrono>
 #include <cmath>
 #include <queue>
+#include <boost/dynamic_bitset.hpp>
 
 #include "exceptions.h"
 #include "parameters.h"
 
-constexpr double kPi = std::acos(-1);
+constexpr double kPi = 3.14159265358979323846264;
 
 namespace efanna2e {
 

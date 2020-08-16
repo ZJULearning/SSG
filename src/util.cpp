@@ -1,5 +1,6 @@
 #include "util.h"
 
+#include <malloc.h>
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
@@ -25,7 +26,7 @@ void GenRandom(std::mt19937& rng, unsigned* addr, unsigned size, unsigned N) {
   }
 }
 
-float* load_data(char* filename, unsigned& num, unsigned& dim) {
+float* load_data(const char* filename, unsigned& num, unsigned& dim) {
   std::ifstream in(filename, std::ios::binary);
   if (!in.is_open()) {
     std::cerr << "Open file error" << std::endl;
@@ -63,7 +64,6 @@ float* data_align(float* data_ori, unsigned point_num, unsigned& dim) {
 #endif
 #endif
 #endif
-
   float* data_new = 0;
   unsigned new_dim =
       (dim + DATA_ALIGN_FACTOR - 1) / DATA_ALIGN_FACTOR * DATA_ALIGN_FACTOR;
