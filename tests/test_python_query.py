@@ -71,5 +71,3 @@ if __name__ == "__main__":
         cnt += len(np.intersect1d(ret, gt))
     acc = cnt / nq / args.k * 100
     print(f"{nq} queries in {elapsed:.4f}s, {qps:.4f}QPS, accuracy {acc:.4f}")
-
-
