@@ -1,7 +1,7 @@
 SSG : Satellite System Graph For Approximate Nearest Neighbor Search
 ======
 
-SSG is a graph-based approximate nearest neighbor search (ANNS) algorithm. It provides a flexible and efficient solution for the metric-free large-scale ANNS on dense real vectors. 
+SSG is a graph-based approximate nearest neighbor search (ANNS) algorithm. It provides a flexible and efficient solution for the metric-free large-scale ANNS on dense real vectors.
 It implements the algorithm of our paper: [Satellite System Graph: Towards the Efficiency Up-Boundary of Graph-Based Approximate Nearest Neighbor Search](https://arxiv.org/abs/1907.06146)
 
 Benchmark datasets
@@ -113,6 +113,41 @@ You should use it to ensure your data elements (feature) is aligned with 8 or 16
 
 > **NOTE:** Only data-type int32 and float32 are supported for now.
 
+### Python API
+
+#### Install
+
+```bash
+$ cd /path/to/project/
+$ python setup.py install
+```
+
+#### Usage
+
+> NOTE: currently Python API only supports `search` method.
+
+```python
+import numpy as np
+import pyssg
+
+data = np.fromfile("/path/to/sift_base.fvecs", dtype=np.float32)
+dim = data[0].view(np.int32)
+data = data.reshape(-1, dim + 1)
+data = np.ascontiguousarray(data[:, 1:])
+ndata, dim = data.shape
+
+pyssg.set_seed(1234)
+index = pyssg.IndexSSG(dim, ndata)
+index.load("/path/to/ssg", data)
+
+k, l = 100, 300
+query = np.random.randn(dim).astype(np.float32)
+knn = index.search(query, k, l)
+print(knn)
+```
+
+Please refer to `tests/test_python_query.py` for a real-world example.
+
 ## Parameters used in Our Paper
 
 ### SSG Building
@@ -169,7 +204,7 @@ $ ./test_ssg_index glove-100.fvecs glove-100_400nn.knng 500 50 60 glove-100.ssg
 
 ## Pre-built kNN Graph and NSG Index
 
-Here we provide our pre-built kNN graphs and SSG index files used in our papar's experiments. 
+Here we provide our pre-built kNN graphs and SSG index files used in our papar's experiments.
 
 |  Dataset  |  kNN Graph  |  SSG Index  |
 |:---------:|:---:|:---:|

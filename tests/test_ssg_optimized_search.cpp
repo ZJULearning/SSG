@@ -86,8 +86,6 @@ int main(int argc, char** argv) {
   std::chrono::duration<double> diff = e - s;
   std::cerr << "Search Time: " << diff.count() << std::endl;
 
-  std::cout << L << "\t" << diff.count() << "\t";
-
   save_result(argv[6], res);
 
   return 0;

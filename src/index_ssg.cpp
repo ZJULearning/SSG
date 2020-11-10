@@ -2,15 +2,15 @@
 
 #include <omp.h>
 #include <bitset>
-#include <boost/dynamic_bitset.hpp>
 #include <chrono>
 #include <cmath>
 #include <queue>
+#include <boost/dynamic_bitset.hpp>
 
 #include "exceptions.h"
 #include "parameters.h"
 
-constexpr double kPi = std::acos(-1);
+constexpr double kPi = 3.14159265358979323846264;
 
 namespace efanna2e {
 
@@ -539,7 +539,7 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
   }
 }
 
-void IndexSSG::OptimizeGraph(float *data) {  // use after build or load
+void IndexSSG::OptimizeGraph(const float *data) {  // use after build or load
 
   data_ = data;
   data_len = (dimension_ + 1) * sizeof(float);
@@ -561,8 +561,6 @@ void IndexSSG::OptimizeGraph(float *data) {  // use after build or load
                 k * sizeof(unsigned));
     std::vector<unsigned>().swap(final_graph_[i]);
   }
-  free(data);
-  data_ = nullptr;
   CompactGraph().swap(final_graph_);
 }
 
