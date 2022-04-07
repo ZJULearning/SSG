@@ -20,14 +20,14 @@ void save_result(char* filename, std::vector<std::vector<unsigned> >& results) {
 }
 
 int main(int argc, char** argv) {
-  if (argc < 8) {
-    std::cout << "./run data_file query_file ssg_path L K result_path ground_truth_path [seed]"
+  if (argc < 10) {
+    std::cout << "./run data_file query_file ssg_path L K result_path ground_truth_path hash_bitwidth threshold_percent [seed]"
               << std::endl;
     exit(-1);
   }
 
-  if (argc == 9) {
-    unsigned seed = (unsigned)atoi(argv[8]);
+  if (argc == 11) {
+    unsigned seed = (unsigned)atoi(argv[10]);
     srand(seed);
     std::cerr << "Using Seed " << seed << std::endl;
   }
@@ -55,8 +55,36 @@ int main(int argc, char** argv) {
   std::cerr << "SSG Path: " << argv[3] << std::endl;
   std::cerr << "Result Path: " << argv[6] << std::endl;
 
+//#ifdef THETA_GUIDED_SEARCH
+  index.hash_bitwidth = (unsigned)atoi(argv[8]);
+  index.threshold_percent = (float)atof(argv[9]);
+//#endif
+
   index.Load(argv[3]);
   index.OptimizeGraph(data_load);
+
+//#ifdef THETA_GUIDED_SEARCH
+  // SJ: For profile, related with #THETA_GUIDED_SEARCH flag
+  char* hash_function_name = new char[strlen(argv[3]) + strlen(".hash_function_") + strlen(argv[9]) + 1];
+  char* hash_vector_name = new char[strlen(argv[3]) + strlen(".hash_vector") + strlen(argv[9]) + 1];
+  strcpy(hash_function_name, argv[3]);
+  strcat(hash_function_name, ".hash_function_");
+  strcat(hash_function_name, argv[8]);
+  strcat(hash_function_name, "b");
+  strcpy(hash_vector_name, argv[3]);
+  strcat(hash_vector_name, ".hash_vector_");
+  strcat(hash_vector_name, argv[8]);
+  strcat(hash_vector_name, "b");
+
+  if (index.LoadHashFunction(hash_function_name)) {
+    if (!index.LoadHashValue(hash_vector_name))
+      index.GenerateHashValue(hash_vector_name);
+  }
+  else {
+    index.GenerateHashFunction(hash_function_name);
+    index.GenerateHashValue(hash_vector_name);
+  }
+//#endif
 
   unsigned L = (unsigned)atoi(argv[4]);
   unsigned K = (unsigned)atoi(argv[5]);
@@ -107,6 +135,10 @@ int main(int argc, char** argv) {
   }
   std::cerr << (float)topk_hit / (query_num * K) * 100 << "%" << std::endl;
 #endif
+//#ifdef THETA_GUIDED_SEARCH
+  delete[] hash_function_name;
+  delete[] hash_vector_name;
+//#endif
 
   save_result(argv[6], res);
 

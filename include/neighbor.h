@@ -156,6 +156,33 @@ static inline int InsertIntoPool(Neighbor *addr, unsigned K, Neighbor nn) {
   return right;
 }
 
+//#ifdef THETA_GUIDED_SEARCH
+struct HashNeighbor{
+  unsigned id;
+  unsigned distance;
+
+  HashNeighbor() = default;
+  HashNeighbor(unsigned id, unsigned distance = -1) : id{id}, distance{distance}{}
+
+  inline bool operator<(const HashNeighbor &other) const {
+      return distance < other.distance;
+  }
+};
+//#endif
+
+#ifdef SORT_BY_EXACT_THETA
+struct HashNeighbor{
+  unsigned id;
+  float distance;
+
+  HashNeighbor() = default;
+  HashNeighbor(unsigned id, float distance = -1.0) : id{id}, distance{distance}{}
+
+  inline bool operator<(const HashNeighbor &other) const {
+      return distance < other.distance;
+  }
+};
+#endif
 }  // namespace efanna2e
 
 #endif  // EFANNA2E_GRAPH_H

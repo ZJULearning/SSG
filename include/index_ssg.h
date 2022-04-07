@@ -34,6 +34,20 @@ class IndexSSG : public Index {
                           const Parameters &parameters, unsigned *indices);
   void OptimizeGraph(const float *data);
 
+//#ifdef THETA_GUIDED_SEARCH
+  // SJ: For SignRandomProjection
+  unsigned int hash_bitwidth;
+  float* hash_function;
+  unsigned int hash_function_size;
+  void GenerateHashFunction (char* file_name);
+  unsigned int* hash_value;
+  void GenerateHashValue (char* file_name);
+  bool LoadHashFunction (char* file_name);
+  bool LoadHashValue (char* file_name);
+  float threshold_percent;
+  size_t hash_len;
+//#endif
+
  protected:
   typedef std::vector<std::vector<unsigned>> CompactGraph;
   typedef std::vector<SimpleNeighbors> LockGraph;
