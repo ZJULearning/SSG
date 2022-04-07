@@ -78,6 +78,7 @@ int main(int argc, char** argv) {
   }
 
   auto s = std::chrono::high_resolution_clock::now();
+#pragma omp parallel for schedule(dynamic, 10)
   for (unsigned i = 0; i < query_num; i++) {
     index.SearchWithOptGraph(query_load + i * dim, K, paras, res[i].data());
   }
@@ -87,6 +88,7 @@ int main(int argc, char** argv) {
   std::cerr << "Search Time: " << diff.count() << std::endl;
 
 #ifdef EVAL_RECALL
+  std::cerr << "QPS: " << query_num / diff.count() << std::endl;
   unsigned int* ground_truth_load = NULL;
   unsigned ground_truth_num, ground_truth_dim;
   ground_truth_load = efanna2e::load_data_ivecs(argv[7], ground_truth_num, ground_truth_dim);
