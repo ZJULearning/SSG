@@ -20,14 +20,14 @@ void save_result(char* filename, std::vector<std::vector<unsigned> >& results) {
 }
 
 int main(int argc, char** argv) {
-  if (argc < 7) {
-    std::cout << "./run data_file query_file ssg_path L K result_path [seed]"
+  if (argc < 8) {
+    std::cout << "./run data_file query_file ssg_path L K result_path ground_truth_path [seed]"
               << std::endl;
     exit(-1);
   }
 
-  if (argc == 8) {
-    unsigned seed = (unsigned)atoi(argv[7]);
+  if (argc == 9) {
+    unsigned seed = (unsigned)atoi(argv[8]);
     srand(seed);
     std::cerr << "Using Seed " << seed << std::endl;
   }
@@ -85,6 +85,26 @@ int main(int argc, char** argv) {
 
   std::chrono::duration<double> diff = e - s;
   std::cerr << "Search Time: " << diff.count() << std::endl;
+
+#ifdef EVAL_RECALL
+  unsigned int* ground_truth_load = NULL;
+  unsigned ground_truth_num, ground_truth_dim;
+  ground_truth_load = efanna2e::load_data_ivecs(argv[7], ground_truth_num, ground_truth_dim);
+  
+  unsigned int topk_hit = 0;
+  for (unsigned int i = 0; i < query_num; i++) {
+    unsigned int topk_local_hit = 0;
+    for (unsigned int j = 0; j < K; j++) {
+      for (unsigned int k = 0; k < K; k++) {
+        if (res[i][j] == *(ground_truth_load + i * ground_truth_dim + k)) {
+          topk_hit++;
+          break;
+        }
+      }
+    }
+  }
+  std::cerr << (float)topk_hit / (query_num * K) * 100 << "%" << std::endl;
+#endif
 
   save_result(argv[6], res);
 

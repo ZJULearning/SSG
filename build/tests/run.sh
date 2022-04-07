@@ -4,7 +4,7 @@ export TIME=$(date '+%Y%m%d%H%M')
 #L_SIZE=(10 20 30 40 50 60 70 80 90 100)
 
 K=(10)
-L_SIZE=(30)
+L_SIZE=(20)
 #L_SIZE=(41 42 43 44 45 46 47 48 49) # sift1M 95%
 #L_SIZE=(51 52 53 54 55 56 57 58 59) # crawl/deep1M 95%
 #L_SIZE=(61 62 63 64 65 66 67 68 69)
@@ -24,7 +24,9 @@ ssg_sift1M() {
   echo "Perform kNN searching using NSG index (sift1M_L${l}K${2})"
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
   ./test_ssg_optimized_search sift1M/sift_base.fvecs sift1M/sift_query.fvecs sift1M.ssg ${1} ${2} sift1M_ssg_result.ivecs \
-    sift1M/sift_groundtruth.ivecs 512 0.25 > sift1M_search_L${1}K${2}_${3}.log
+  sift1M/sift_groundtruth.ivecs 2> sift1M_search_L${1}K${2}_${3}.log
+#  ./test_ssg_optimized_search sift1M/sift_base.fvecs sift1M/sift_query.fvecs sift1M.ssg ${1} ${2} sift1M_ssg_result.ivecs \
+#    sift1M/sift_groundtruth.ivecs 512 0.25 > sift1M_search_L${1}K${2}_${3}.log
 }
 
 ssg_gist1M() {
@@ -40,7 +42,7 @@ ssg_gist1M() {
   echo "Perform kNN searching using NSG index (gist1M_L${1}K${2})"
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
   ./test_ssg_optimized_search gist1M/gist_base.fvecs gist1M/gist_query.fvecs gist1M.ssg ${1} ${2} gist1M_ssg_result.ivecs \
-    gist1M/gist_groundtruth.ivecs 1024 0.3 > gist1M_search_L${1}K${2}_${3}.log
+    gist1M/gist_groundtruth.ivecs 1024 0.3 2> gist1M_search_L${1}K${2}_${3}.log
 }
 
 ssg_deep1M() {
@@ -56,7 +58,7 @@ ssg_deep1M() {
   echo "Perform kNN searching using NSG index (deep1M_L${1}K${2})"
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
   ./test_ssg_optimized_search deep1M/deep1m_base.fvecs deep1M/deep1m_query.fvecs deep1M.ssg ${1} ${2} deep1M_ssg_result.ivecs \
-    deep1M/deep1m_groundtruth.ivecs 512 0.3 > deep1M_search_L${1}K${2}_${3}.log
+    deep1M/deep1m_groundtruth.ivecs 512 0.3 2> deep1M_search_L${1}K${2}_${3}.log
 }
 
 ssg_glove-100() {
@@ -72,7 +74,7 @@ ssg_glove-100() {
   echo "Perform kNN searching using NSG index (glove-100_L${1}K${2})"
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
   ./test_ssg_optimized_search glove-100/glove-100_base.fvecs glove-100/glove-100_query.fvecs glove-100.ssg ${1} ${2} glove-100_ssg_result.ivecs \
-    glove-100/glove-100_groundtruth.ivecs 512 0.3 > glove-100_search_L${1}K${2}_${3}.log
+    glove-100/glove-100_groundtruth.ivecs 512 0.3 2> glove-100_search_L${1}K${2}_${3}.log
 }
 
 ssg_crawl() {
@@ -88,7 +90,7 @@ ssg_crawl() {
   echo "Perform kNN searching using NSG index (crawl_L${1}K${2})"
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
   ./test_ssg_optimized_search crawl/crawl_base.fvecs crawl/crawl_query.fvecs crawl.ssg ${1} ${2} crawl_ssg_result.ivecs \
-    crawl/crawl_groundtruth.ivecs 512 0.3 > crawl_search_L${1}K${2}_${3}.log
+    crawl/crawl_groundtruth.ivecs 512 0.3 2> crawl_search_L${1}K${2}_${3}.log
 }
 
 if [ "${1}" == "sift1M" ]; then
