@@ -27,6 +27,9 @@ endif()
 add_subdirectory(third_party/pybind11)
 
 # Source codes
+add_definitions(-DEVAL_RECALL)
+add_definitions(-DTHETA_GUIDED_SEARCH)
+
 add_subdirectory(src)
 add_subdirectory(tests)
 
