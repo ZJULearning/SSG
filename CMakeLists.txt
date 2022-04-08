@@ -26,12 +26,13 @@ endif()
 # Python binding
 add_subdirectory(third_party/pybind11)
 
-# Source codes
+# Compile flags
+add_definitions(-std=c++11 -O3 -lboost -ltcmalloc_minimal -march=native -Wall -DINFO)
+
+# Add define
 add_definitions(-DEVAL_RECALL)
 add_definitions(-DTHETA_GUIDED_SEARCH)
 
+# Source codes
 add_subdirectory(src)
 add_subdirectory(tests)
-
-# Compile flags
-add_definitions(-std=c++11 -O3 -lboost -ltcmalloc_minimal -march=native -Wall -DINFO)
