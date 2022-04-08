@@ -55,15 +55,15 @@ int main(int argc, char** argv) {
   std::cerr << "SSG Path: " << argv[3] << std::endl;
   std::cerr << "Result Path: " << argv[6] << std::endl;
 
-//#ifdef THETA_GUIDED_SEARCH
+#ifdef THETA_GUIDED_SEARCH
   index.hash_bitwidth = (unsigned)atoi(argv[8]);
   index.threshold_percent = (float)atof(argv[9]);
-//#endif
+#endif
 
   index.Load(argv[3]);
   index.OptimizeGraph(data_load);
 
-//#ifdef THETA_GUIDED_SEARCH
+#ifdef THETA_GUIDED_SEARCH
   // SJ: For profile, related with #THETA_GUIDED_SEARCH flag
   char* hash_function_name = new char[strlen(argv[3]) + strlen(".hash_function_") + strlen(argv[9]) + 1];
   char* hash_vector_name = new char[strlen(argv[3]) + strlen(".hash_vector") + strlen(argv[9]) + 1];
@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
     index.GenerateHashFunction(hash_function_name);
     index.GenerateHashValue(hash_vector_name);
   }
-//#endif
+#endif
 
   unsigned L = (unsigned)atoi(argv[4]);
   unsigned K = (unsigned)atoi(argv[5]);
@@ -135,10 +135,10 @@ int main(int argc, char** argv) {
   }
   std::cerr << (float)topk_hit / (query_num * K) * 100 << "%" << std::endl;
 #endif
-//#ifdef THETA_GUIDED_SEARCH
+#ifdef THETA_GUIDED_SEARCH
   delete[] hash_function_name;
   delete[] hash_vector_name;
-//#endif
+#endif
 
   save_result(argv[6], res);
 

@@ -156,7 +156,7 @@ static inline int InsertIntoPool(Neighbor *addr, unsigned K, Neighbor nn) {
   return right;
 }
 
-//#ifdef THETA_GUIDED_SEARCH
+#ifdef THETA_GUIDED_SEARCH
 struct HashNeighbor{
   unsigned id;
   unsigned distance;
@@ -168,7 +168,7 @@ struct HashNeighbor{
       return distance < other.distance;
   }
 };
-//#endif
+#endif
 
 #ifdef SORT_BY_EXACT_THETA
 struct HashNeighbor{

@@ -468,10 +468,10 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
   unsigned L = parameters.Get<unsigned>("L_search");
   DistanceFastL2 *dist_fast = (DistanceFastL2 *)distance_;
 
-//#ifdef THETA_GUIDED_SEARCH
+#ifdef THETA_GUIDED_SEARCH
   std::vector<HashNeighbor> theta_queue(512);
   unsigned int* hashed_query = new unsigned int[hash_bitwidth >> 5];
-//#endif
+#endif
   std::vector<Neighbor> retset(L + 1);
   std::vector<unsigned> init_ids(L);
   std::mt19937 rng(rand());
@@ -503,7 +503,7 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
 
   std::sort(retset.begin(), retset.begin() + L);
 
-//#ifdef THETA_GUIDED_SEARCH
+#ifdef THETA_GUIDED_SEARCH
   float query_norm = dist_fast->norm(query, dimension_);
   unsigned int hash_size = hash_bitwidth >> 5;
   for (unsigned int num_integer = 0; num_integer < hash_size; num_integer++) {
@@ -516,13 +516,12 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
     }
   }
   
-//  __m256i hashed_query_avx[6];
-//  __m256i hashed_query_avx[hash_size >> 3];
-//  for (unsigned int m = 0; m < (hash_size >> 3); m++) {
-//    hashed_query_avx[m] = _mm256_loadu_si256((__m256i*)(hashed_query));
-//    hashed_query += 8;
-//  }
-//#endif
+  __m256i hashed_query_avx[6];
+  for (unsigned int m = 0; m < (hash_size >> 3); m++) {
+    hashed_query_avx[m] = _mm256_loadu_si256((__m256i*)(hashed_query));
+    hashed_query += 8;
+  }
+#endif
 
   int k = 0;
   while (k < (int)L) {
@@ -536,7 +535,7 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
       unsigned MaxM = *neighbors;
       neighbors++;
 
-//#ifdef THETA_GUIDED_SEARCH
+#ifdef THETA_GUIDED_SEARCH
       unsigned long long hamming_result[4];
       unsigned int theta_queue_size = 0;
       unsigned int theta_queue_size_limit = (unsigned int)ceil(MaxM * threshold_percent);
@@ -567,10 +566,8 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
         unsigned int* hash_value_address = (unsigned int*)(opt_graph_ + node_size * nd_ + hash_len * id);
         for (unsigned int i = 0; i < (hash_size >> 3); i++) {
           __m256i hash_value_avx, hamming_result_avx;
-          __m256i hashed_query_avx;
-          hashed_query_avx = _mm256_loadu_si256((__m256i*)(hashed_query[i << 3]));
           hash_value_avx = _mm256_loadu_si256((__m256i*)(hash_value_address));
-          hamming_result_avx = _mm256_xor_si256(hashed_query_avx, hash_value_avx);
+          hamming_result_avx = _mm256_xor_si256(hashed_query_avx[i], hash_value_avx);
 #ifdef __AVX512VPOPCNTDQ__
           hamming_result_avx = _mm256_popcnt_epi64(hamming_result_avx);
           _mm256_storeu_si256((__m256i*)&hamming_result, hamming_result_avx);
@@ -607,19 +604,19 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
           hamming_distance_max.distance = theta_queue[hamming_distance_max.id].distance;
         }
       }
-//#endif
+#endif
 
       for (unsigned m = 0; m < MaxM; ++m)
         _mm_prefetch(opt_graph_ + node_size * neighbors[m], _MM_HINT_T0);
-//#ifdef THETA_GUIDED_SEARCH
+#ifdef THETA_GUIDED_SEARCH
       for (unsigned int m = 0; m < theta_queue_size_limit; m++) {
 //        std::cerr << "id: " << theta_queue[m].id << ", dist: " << theta_queue[m].distance * 180.0 / hash_bitwidth << std::endl;
         unsigned int id = theta_queue[m].id;
         theta_queue[m].distance = -1;
-//#else
-//      for (unsigned m = 0; m < MaxM; ++m) {
-//        unsigned id = neighbors[m];
-//#endif
+#else
+      for (unsigned m = 0; m < MaxM; ++m) {
+        unsigned id = neighbors[m];
+#endif
         if (flags[id]) continue;
         flags[id] = 1;
         float *data = (float *)(opt_graph_ + node_size * id);
@@ -650,15 +647,15 @@ void IndexSSG::OptimizeGraph(const float *data) {  // use after build or load
   data_ = data;
   data_len = (dimension_ + 1) * sizeof(float);
   neighbor_len = (width + 1) * sizeof(unsigned);
-//#ifdef THETA_GUIDED_SEARCH
+#ifdef THETA_GUIDED_SEARCH
   hash_len = (hash_bitwidth >> 3); // SJ: Append hash_values
   node_size = data_len + neighbor_len;
   hash_function_size = dimension_ * hash_bitwidth * sizeof(float);
-  opt_graph_ = (char *)malloc(node_size * nd_ + hash_len * nd_ + hash_function_size);
-//#else
-//  node_size = data_len + neighbor_len;
-//  opt_graph_ = (char *)malloc(node_size * nd_);
-//#endif
+  opt_graph_ = (char *)malloc(node_size * nd_ + hash_len * (nd_ + 1) + hash_function_size);
+#else
+  node_size = data_len + neighbor_len;
+  opt_graph_ = (char *)malloc(node_size * nd_);
+#endif
   DistanceFastL2 *dist_fast = (DistanceFastL2 *)distance_;
   for (unsigned i = 0; i < nd_; i++) {
     char *cur_node_offset = opt_graph_ + i * node_size;
@@ -861,7 +858,7 @@ void IndexSSG::DFS_expand(const Parameters &parameter) {
   }
 }
 
-//#ifdef THETA_GUIDED_SEARCH
+#ifdef THETA_GUIDED_SEARCH
 // SJ: For SRP
 void IndexSSG::GenerateHashFunction (char* file_name) {
   DistanceFastL2* dist_fast = (DistanceFastL2*) distance_;
@@ -962,6 +959,6 @@ bool IndexSSG::LoadHashValue (char* file_name) {
     return false;
   }
 }
-//#endif
+#endif
 
 }  // namespace efanna2e
