@@ -577,8 +577,8 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
           _mm256_storeu_si256((__m256i*)&hamming_result, hamming_result_avx);
           for (unsigned int j = 0; j < 4; j++)
             hamming_distance += _popcnt64(hamming_result[j]);
-          hash_value_address += 8;
 #endif
+          hash_value_address += 8;
         }
 #else
         for (unsigned int num_integer = 0; num_integer < hash_bitwidth / 32; num_integer++) {
