@@ -1,12 +1,12 @@
 #!/bin/bash
 export TIME=$(date '+%Y%m%d%H%M')
-#K=(1)
-#L_SIZE=(10 20 30 40 50 60 70 80 90 100)
-
-K=(1 10)
-#L_SIZE=(20)
-L_SIZE=(20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200)
-#L_SIZE=(250 300 350 400 450 500 550 600 650 700 750 800 850 900 950 1000)
+MAX_THREADS=`nproc --all`
+THREAD=(1 ${MAX_THREADS})
+#THREAD=(1 2 4 8 ${MAX_THREADS})
+K=(10)
+L_SIZE=(38)
+#L_SIZE=(20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200)
+#L_SIZE=(200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000) # 2100 2200 2300 2400 2500 2600 2700 2800 2900 3000 3100 3200 3300 3400 3500 3600 3700 3800 3900 400)
 
 ssg_sift1M() {
   if [ ! -f "sift1M.ssg" ]; then
@@ -18,10 +18,10 @@ ssg_sift1M() {
       exit 1
     fi
   fi
-  echo "Perform kNN searching using SSG index (sift1M_L${l}K${2})"
+  echo "Perform kNN searching using SSG index (sift1M_L${l}K${2}T${4})"
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
   ./test_ssg_optimized_search sift1M/sift_base.fvecs sift1M/sift_query.fvecs sift1M.ssg ${1} ${2} sift1M_ssg_result.ivecs \
-    sift1M/sift_groundtruth.ivecs 512 0.25 2> sift1M_search_L${1}K${2}_${3}.log
+    sift1M/sift_groundtruth.ivecs 512 0.25 ${4} 2> sift1M_search_L${1}K${2}_${3}_T${4}.log
 }
 
 ssg_gist1M() {
@@ -34,10 +34,10 @@ ssg_gist1M() {
       exit 1
     fi
   fi
-  echo "Perform kNN searching using SSG index (gist1M_L${1}K${2})"
+  echo "Perform kNN searching using SSG index (gist1M_L${1}K${2}T${4})"
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
   ./test_ssg_optimized_search gist1M/gist_base.fvecs gist1M/gist_query.fvecs gist1M.ssg ${1} ${2} gist1M_ssg_result.ivecs \
-    gist1M/gist_groundtruth.ivecs 1024 0.3 2> gist1M_search_L${1}K${2}_${3}.log
+    gist1M/gist_groundtruth.ivecs 1024 0.3 ${4} 2> gist1M_search_L${1}K${2}_${3}_T${4}.log
 }
 
 ssg_deep1M() {
@@ -50,10 +50,10 @@ ssg_deep1M() {
       exit 1
     fi
   fi
-  echo "Perform kNN searching using SSG index (deep1M_L${1}K${2})"
+  echo "Perform kNN searching using SSG index (deep1M_L${1}K${2}T${4})"
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
   ./test_ssg_optimized_search deep1M/deep1m_base.fvecs deep1M/deep1m_query.fvecs deep1M.ssg ${1} ${2} deep1M_ssg_result.ivecs \
-    deep1M/deep1m_groundtruth.ivecs 512 0.3 2> deep1M_search_L${1}K${2}_${3}.log
+    deep1M/deep1m_groundtruth.ivecs 512 0.3 ${4} 2> deep1M_search_L${1}K${2}_${3}_T${4}.log
 }
 
 ssg_glove-100() {
@@ -66,10 +66,10 @@ ssg_glove-100() {
       exit 1
     fi
   fi
-  echo "Perform kNN searching using SSG index (glove-100_L${1}K${2})"
+  echo "Perform kNN searching using SSG index (glove-100_L${1}K${2}T${4})"
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
   ./test_ssg_optimized_search glove-100/glove-100_base.fvecs glove-100/glove-100_query.fvecs glove-100.ssg ${1} ${2} glove-100_ssg_result.ivecs \
-    glove-100/glove-100_groundtruth.ivecs 512 0.3 2> glove-100_search_L${1}K${2}_${3}.log
+    glove-100/glove-100_groundtruth.ivecs 512 0.3 ${4} 2> glove-100_search_L${1}K${2}_${3}_T${4}.log
 }
 
 ssg_crawl() {
@@ -82,56 +82,68 @@ ssg_crawl() {
       exit 1
     fi
   fi
-  echo "Perform kNN searching using SSG index (crawl_L${1}K${2})"
+  echo "Perform kNN searching using SSG index (crawl_L${1}K${2}T${4})"
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
   ./test_ssg_optimized_search crawl/crawl_base.fvecs crawl/crawl_query.fvecs crawl.ssg ${1} ${2} crawl_ssg_result.ivecs \
-    crawl/crawl_groundtruth.ivecs 512 0.3 2> crawl_search_L${1}K${2}_${3}.log
+    crawl/crawl_groundtruth.ivecs 512 0.3 ${4} 2> crawl_search_L${1}K${2}_${3}_T${4}.log
 }
 
 if [ "${1}" == "sift1M" ]; then
   for k in ${K[@]}; do
     for l_size in ${L_SIZE[@]}; do
       declare -i l=l_size
-      ssg_sift1M ${l} ${k} ${2}
+      for t in ${THREAD[@]}; do
+        ssg_sift1M ${l} ${k} ${2} ${t}
+      done
     done
   done
 elif [ "${1}" == "gist1M" ]; then
   for k in ${K[@]}; do
     for l_size in ${L_SIZE[@]}; do
       declare -i l=l_size
-      ssg_gist1M ${l} ${k} ${2}
+      for t in ${THREAD[@]}; do
+        ssg_gist1M ${l} ${k} ${2} ${t}
+      done
     done
   done
 elif [ "${1}" == "deep1M" ]; then
   for k in ${K[@]}; do
     for l_size in ${L_SIZE[@]}; do
       declare -i l=l_size
-      ssg_deep1M ${l} ${k} ${2}
+      for t in ${THREAD[@]}; do
+        ssg_deep1M ${l} ${k} ${2} ${t}
+      done
     done
   done
 elif [ "${1}" == "glove-100" ]; then
   for k in ${K[@]}; do
     for l_size in ${L_SIZE[@]}; do
       declare -i l=l_size
-      ssg_glove-100 ${l} ${k} ${2}
+      for t in ${THREAD[@]}; do
+        ssg_glove-100 ${l} ${k} ${2} ${t}
+      done
     done
   done
 elif [ "${1}" == "crawl" ]; then
   for k in ${K[@]}; do
     for l_size in ${L_SIZE[@]}; do
       declare -i l=l_size
-      ssg_crawl ${l} ${k} ${2}
+      for t in ${THREAD[@]}; do
+        ssg_crawl ${l} ${k} ${2} ${t}
+      done
     done
   done
 elif [ "${1}" == "all" ]; then
   for k in ${K[@]}; do
     for l_size in ${L_SIZE[@]}; do
       declare -i l=l_size
-      ssg_sift1M ${l} ${k} ${2}
-      ssg_gist1M ${l} ${k} ${2}
-      ssg_deep1M ${l} ${k} ${2}
-#      ssg_glove-100 ${l} ${k} ${2}
-      ssg_crawl ${l} ${k} ${2}
+      for t in ${THREAD[@]}; do
+        ssg_sift1M ${l} ${k} ${2} ${t}
+        ssg_gist1M ${l} ${k} ${2} ${t}
+        ssg_deep1M ${l} ${k} ${2} ${t}
+#        ssg_glove-100 ${l} ${k} ${2} ${t}
+        ssg_crawl ${l} ${k} ${2} ${t}
+      done
     done
   done
 else

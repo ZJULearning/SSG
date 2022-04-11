@@ -20,14 +20,14 @@ void save_result(char* filename, std::vector<std::vector<unsigned> >& results) {
 }
 
 int main(int argc, char** argv) {
-  if (argc < 10) {
-    std::cout << "./run data_file query_file ssg_path L K result_path ground_truth_path hash_bitwidth threshold_percent [seed]"
+  if (argc < 11) {
+    std::cout << "./run data_file query_file ssg_path L K result_path ground_truth_path hash_bitwidth threshold_percent num_threads [seed]"
               << std::endl;
     exit(-1);
   }
 
-  if (argc == 11) {
-    unsigned seed = (unsigned)atoi(argv[10]);
+  if (argc == 12) {
+    unsigned seed = (unsigned)atoi(argv[11]);
     srand(seed);
     std::cerr << "Using Seed " << seed << std::endl;
   }
@@ -105,6 +105,7 @@ int main(int argc, char** argv) {
     }
   }
 
+  omp_set_num_threads(atoi(argv[10]));
   auto s = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for schedule(dynamic, 10)
   for (unsigned i = 0; i < query_num; i++) {
