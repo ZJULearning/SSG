@@ -7,6 +7,7 @@
 #include "index_random.h"
 #include "index_ssg.h"
 #include "util.h"
+#include <omp.h>
 
 void save_result(char* filename, std::vector<std::vector<unsigned> >& results) {
   std::ofstream out(filename, std::ios::binary | std::ios::out);
