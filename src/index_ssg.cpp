@@ -472,6 +472,9 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
   std::vector<HashNeighbor> theta_queue(512);
   unsigned int* hashed_query = new unsigned int[hash_bitwidth >> 5];
 #endif
+#ifdef PROFILE
+  unsigned int tid = omp_get_thread_num();
+#endif
   std::vector<Neighbor> retset(L + 1);
   std::vector<unsigned> init_ids(L);
   std::mt19937 rng(rand());
@@ -503,6 +506,9 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
 
   std::sort(retset.begin(), retset.begin() + L);
 
+#ifdef PROFILE
+  auto query_hash_start = std::chrono::high_resolution_clock::now();
+#endif
 #ifdef THETA_GUIDED_SEARCH
   float query_norm = dist_fast->norm(query, dimension_);
   unsigned int hash_size = hash_bitwidth >> 5;
@@ -522,6 +528,11 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
     hashed_query += 8;
   }
 #endif
+#ifdef PROFILE
+  auto query_hash_end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> query_hash_diff = query_hash_end - query_hash_start;
+  profile_time[tid * num_timer] += query_hash_diff.count() * 1000000;
+#endif
 
   int k = 0;
   while (k < (int)L) {
@@ -535,6 +546,9 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
       unsigned MaxM = *neighbors;
       neighbors++;
 
+#ifdef PROFILE
+      auto hash_approx_start = std::chrono::high_resolution_clock::now();
+#endif
 #ifdef THETA_GUIDED_SEARCH
       unsigned long long hamming_result[4];
       unsigned int theta_queue_size = 0;
@@ -605,6 +619,12 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
         }
       }
 #endif
+#ifdef PROFILE
+      auto hash_approx_end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> hash_approx_diff = hash_approx_end - hash_approx_start;
+      profile_time[tid * num_timer + 1] += hash_approx_diff.count() * 1000000;
+      auto dist_start = std::chrono::high_resolution_clock::now();
+#endif
 
       for (unsigned m = 0; m < MaxM; ++m)
         _mm_prefetch(opt_graph_ + node_size * neighbors[m], _MM_HINT_T0);
@@ -631,6 +651,11 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
         // if(L+1 < retset.size()) ++L;
         if (r < nk) nk = r;
       }
+#ifdef PROFILE
+      auto dist_end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> dist_diff = dist_end - dist_start;
+      profile_time[tid * num_timer + 2] += dist_diff.count() * 1000000;
+#endif
     }
     if (nk <= k)
       k = nk;

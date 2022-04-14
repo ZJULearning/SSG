@@ -47,6 +47,10 @@ class IndexSSG : public Index {
   float threshold_percent;
   size_t hash_len;
 #endif
+#ifdef PROFILE
+  unsigned int num_timer = 0;
+  std::vector<double> profile_time;
+#endif
 
  protected:
   typedef std::vector<std::vector<unsigned>> CompactGraph;
