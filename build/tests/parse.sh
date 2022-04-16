@@ -6,6 +6,7 @@ parse_log() {
   export dataset=${1} # SIFT1M, GIST1M, CRAWL, DEEP1M
   export tag=${2}
   export log_list=`find . -name "${dataset}_search_L*${tag}.log" | sort -V`
+  echo ${log_list} > "${dataset}_${tag}_list.summary
   # Basic parsing
   export QPS=`cat ${log_list} | grep "QPS" | awk '{printf "%s\n", $2}'`
   echo ${QPS} > "${dataset}_${tag}_QPS.summary"
