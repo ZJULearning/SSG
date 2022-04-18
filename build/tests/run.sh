@@ -1,11 +1,12 @@
 #!/bin/bash
 export TIME=$(date '+%Y%m%d%H%M')
 MAX_THREADS=`nproc --all`
-THREAD=(1 ${MAX_THREADS})
-#THREAD=(1 2 4 8 ${MAX_THREADS})
-K=(10)
-L_SIZE=(38)
-#L_SIZE=(20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200)
+THREAD=(${MAX_THREADS})
+#THREAD=(1 2 4 8 10 12 14 16 18 20 22 ${MAX_THREADS})
+K=(1)
+#K=(1 10)
+L_SIZE=(35)
+#L_SIZE=(20 22 24 30 35 38 40 50 55 58 60 63 70 80 84 90 91 98 100 110 117 120 123 130 135 140 150 160 170 180 190 200)
 #L_SIZE=(200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000) # 2100 2200 2300 2400 2500 2600 2700 2800 2900 3000 3100 3200 3300 3400 3500 3600 3700 3800 3900 400)
 
 ssg_sift1M() {
@@ -53,7 +54,26 @@ ssg_deep1M() {
   echo "Perform kNN searching using SSG index (deep1M_L${1}K${2}T${4})"
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
   ./test_ssg_optimized_search deep1M/deep1m_base.fvecs deep1M/deep1m_query.fvecs deep1M.ssg ${1} ${2} deep1M_ssg_result.ivecs \
-    deep1M/deep1m_groundtruth.ivecs 512 0.3 ${4} 2> deep1M_search_L${1}K${2}_${3}_T${4}.log
+    deep1M/deep1m_groundtruth.ivecs 512 0.35 ${4} 2> deep1M_search_L${1}K${2}_${3}_T${4}.log
+}
+
+ssg_deep100M() {
+  export sub_num=(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15)
+  for id in ${sub_num[@]}; do
+    if [ ! -f "deep100M_${id}.ssg" ]; then
+      echo "Converting deep100M_400nn_${id}.graph kNN graph to deep100M_${id}.ssg"
+      if [ -f "deep100M_400nn_${id}.graph" ]; then
+        ./test_ssg_index deep100M/deep100M_base_${id}.fvecs deep100M_400nn_${id}.graph 500 40 60 deep100M_${id}.ssg
+      else
+        echo "ERROR: deep100M_400nn_${id}.graph does not exist"
+        exit 1
+      fi
+    fi
+  done
+#  echo "Perform kNN searching using SSG index (deep1M_L${1}K${2}T${4})"
+#  sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
+#  ./test_ssg_optimized_search deep1M/deep1m_base.fvecs deep1M/deep1m_query.fvecs deep1M.ssg ${1} ${2} deep1M_ssg_result.ivecs \
+#    deep1M/deep1m_groundtruth.ivecs 512 0.35 ${4} 2> deep1M_search_L${1}K${2}_${3}_T${4}.log
 }
 
 ssg_glove-100() {
@@ -112,6 +132,15 @@ elif [ "${1}" == "deep1M" ]; then
       declare -i l=l_size
       for t in ${THREAD[@]}; do
         ssg_deep1M ${l} ${k} ${2} ${t}
+      done
+    done
+  done
+elif [ "${1}" == "deep100M" ]; then
+  for k in ${K[@]}; do
+    for l_size in ${L_SIZE[@]}; do
+      declare -i l=l_size
+      for t in ${THREAD[@]}; do
+        ssg_deep100M ${l} ${k} ${2} ${t}
       done
     done
   done
