@@ -33,6 +33,13 @@ int main(int argc, char** argv) {
     std::cerr << "Using Seed " << seed << std::endl;
   }
 
+  std::cerr << "Query Path: " << argv[2] << std::endl;
+
+  unsigned query_num, query_dim;
+  float* query_load = nullptr;
+  query_load = efanna2e::load_data(argv[2], query_num, query_dim);
+  query_load = efanna2e::data_align(query_load, query_num, query_dim);
+
   unsigned L = (unsigned)atoi(argv[4]);
   unsigned K = (unsigned)atoi(argv[5]);
 
@@ -56,13 +63,6 @@ int main(int argc, char** argv) {
   std::vector<double> global_timer;
   global_timer.resize(num_timer, 0.0);
 #endif
-
-  std::cerr << "Query Path: " << argv[2] << std::endl;
-
-  unsigned query_num, query_dim;
-  float* query_load = nullptr;
-  query_load = efanna2e::load_data(argv[2], query_num, query_dim);
-  query_load = efanna2e::data_align(query_load, query_num, query_dim);
 
   for (unsigned int iter = 0; iter < 16; iter++) {
     unsigned points_num, dim;
@@ -157,6 +157,10 @@ int main(int argc, char** argv) {
     delete[] data_load;
     delete[] sub_dataname;
     delete[] sub_indexname;
+#ifdef THETA_GUIDED_SEARCH
+    delete[] hash_function_name;
+    delete[] hash_vector_name;
+#endif
   }
 
   std::cerr << "Search Time: " << global_search_time << std::endl;
@@ -207,10 +211,6 @@ int main(int argc, char** argv) {
   std::cerr << "dist time: " << timer[2] / query_num << "ms" << std::endl;
 #endif
   std::cerr << "=====================================" << std::endl;
-#endif
-#ifdef THETA_GUIDED_SEARCH
-  delete[] hash_function_name;
-  delete[] hash_vector_name;
 #endif
 
   save_result(argv[6], res);
