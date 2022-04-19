@@ -505,7 +505,6 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
   // std::cout<<L<<std::endl;
 
   std::sort(retset.begin(), retset.begin() + L);
-
 #ifdef PROFILE
   auto query_hash_start = std::chrono::high_resolution_clock::now();
 #endif
@@ -665,6 +664,9 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
   for (size_t i = 0; i < K; i++) {
     indices[i] = retset[i].id;
   }
+#ifdef THETA_GUIDED_SEARCH
+  delete[] hashed_query;
+#endif
 }
 
 void IndexSSG::OptimizeGraph(const float *data) {  // use after build or load
@@ -951,6 +953,7 @@ void IndexSSG::GenerateHashValue (char* file_name) {
 bool IndexSSG::LoadHashFunction (char* file_name) {
   std::ifstream file_hash_function(file_name, std::ios::binary);
   if (file_hash_function.is_open()) {
+    std::cout << "LoadHashFunction" << std::endl;
     unsigned int hash_bitwidth_temp;
     file_hash_function.read((char*)&hash_bitwidth_temp, sizeof(unsigned int));
     if (hash_bitwidth != hash_bitwidth_temp) {
@@ -970,6 +973,7 @@ bool IndexSSG::LoadHashFunction (char* file_name) {
 bool IndexSSG::LoadHashValue (char* file_name) {
   std::ifstream file_hash_value(file_name, std::ios::binary);
   if (file_hash_value.is_open()) {
+    std::cout << "LoadHashVector" << std::endl;
     hash_value = (unsigned int*)(opt_graph_ + node_size * nd_);
     for (unsigned int i = 0; i < nd_; i++) {
       for (unsigned int j = 0; j < (hash_bitwidth >> 5); j++) {
