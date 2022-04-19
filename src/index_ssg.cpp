@@ -535,9 +535,17 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
 #endif
 
   int k = 0;
+#ifdef GET_MISS_TRAVERSE
+  unsigned int query_traverse = 0;
+  unsigned int query_traverse_miss = 0;
+#endif
   while (k < (int)L) {
     int nk = L;
-
+#ifdef GET_MISS_TRAVERSE
+    unsigned int local_traverse = 0;
+    unsigned int local_traverse_miss = 0;
+    std::vector<unsigned> inserted_ids;
+#endif
     if (retset[k].flag) {
       retset[k].flag = false;
       unsigned n = retset[k].id;
@@ -644,10 +652,24 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
         data++;
         float dist =
             dist_fast->compare(query, data, norm, (unsigned)dimension_);
-        if (dist >= retset[L - 1].distance) continue;
+        if (dist >= retset[L - 1].distance){
+#ifdef GET_MISS_TRAVERSE
+          local_traverse++;
+          query_traverse++;
+          local_traverse_miss++;
+          query_traverse_miss++;
+#endif          
+          continue;
+        }
+#ifdef GET_MISS_TRAVERSE
+        local_traverse++;
+        query_traverse++;
+#endif        
         Neighbor nn(id, dist, true);
         int r = InsertIntoPool(retset.data(), L, nn);
-
+#ifdef GET_MISS_TRAVERSE
+        inserted_ids.push_back(id);
+#endif
         // if(L+1 < retset.size()) ++L;
         if (r < nk) nk = r;
       }
@@ -665,6 +687,11 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
   for (size_t i = 0; i < K; i++) {
     indices[i] = retset[i].id;
   }
+#ifdef GET_MISS_TRAVERSE
+  total_traverse += query_traverse;
+  total_traverse_miss += query_traverse_miss;
+//  printf("[Query_summary] # of traversed: %u, # of invalid: %u, ratio: %.2f%%\n", query_traverse, query_traverse_miss, (float)query_traverse_miss / query_traverse * 100);
+#endif
 }
 
 void IndexSSG::OptimizeGraph(const float *data) {  // use after build or load
