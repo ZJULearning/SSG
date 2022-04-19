@@ -132,7 +132,11 @@ int main(int argc, char** argv) {
 
   std::chrono::duration<double> diff = e - s;
   std::cerr << "Search Time: " << diff.count() << std::endl;
-
+#ifdef GET_MISS_TRAVERSE
+  std::cerr << std::endl;
+  std::cerr << "[Total_summary] # of traversed: "<< index.total_traverse <<", # of invalid: "<< index.total_traverse_miss << ", ratio: "<< (float)index.total_traverse_miss / index.total_traverse * 100<<std::endl;
+  //printf("[Total_summary] # of traversed: %u, # of invalid: %u, ratio: %.2f%%\n", index.total_traverse, index.total_traverse_miss, (float)index.total_traverse_miss / index.total_traverse * 100);
+#endif
 #ifdef EVAL_RECALL
   std::cerr << "QPS: " << query_num / diff.count() << std::endl;
   unsigned int* ground_truth_load = NULL;

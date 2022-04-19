@@ -34,6 +34,7 @@ add_definitions(-DEVAL_RECALL)
 #add_definitions(-DTHETA_GUIDED_SEARCH)
 #add_definitions(-DTHREAD_LATENCY)
 #add_definitions(-DPROFILE)
+#add_definitions(-DGET_MISS_TRAVERSE)
 
 # Source codes
 add_subdirectory(src)
