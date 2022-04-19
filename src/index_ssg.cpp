@@ -686,9 +686,6 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
   for (size_t i = 0; i < K; i++) {
     indices[i] = retset[i].id;
   }
-#ifdef THETA_GUIDED_SEARCH
-  delete[] hashed_query;
-#endif
 #ifdef GET_MISS_TRAVERSE
   total_traverse += query_traverse;
   total_traverse_miss += query_traverse_miss;
