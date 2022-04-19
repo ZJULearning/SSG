@@ -70,10 +70,12 @@ int main(int argc, char** argv) {
     char iter_char[3];
     std::sprintf(iter_char, "%d", iter);
     unsigned int dataname_len = strlen(argv[1]);
-    char* sub_dataname = new char[dataname_len + 4];
-    strncpy(sub_dataname, argv[1], dataname_len - 4);
+    char* sub_dataname = new char[dataname_len + 5];
+    strncpy(sub_dataname, argv[1], dataname_len - 6);
+    sub_dataname[dataname_len - 6] = '\0';
+    strcat(sub_dataname, "_");
     strcat(sub_dataname, iter_char);
-    strcat(sub_dataname, &argv[1][dataname_len - 4]);
+    strcat(sub_dataname, &argv[1][dataname_len - 6]);
     std::cerr << "Data Path: " << sub_dataname << std::endl;
 
     data_load = efanna2e::load_data(sub_dataname, points_num, dim);
@@ -86,10 +88,12 @@ int main(int argc, char** argv) {
         (efanna2e::Index*)(&init_index));
 
     unsigned int indexname_len = strlen(argv[3]);
-    char* sub_indexname = new char[indexname_len + 4];
-    strncpy(sub_indexname, argv[3], indexname_len - 3);
+    char* sub_indexname = new char[indexname_len + 5];
+    strncpy(sub_indexname, argv[3], indexname_len - 4);
+    sub_indexname[indexname_len - 4] = '\0';
+    strcat(sub_indexname, "_");
     strcat(sub_indexname, iter_char);
-    strcat(sub_indexname, &argv[3][indexname_len - 3]);
+    strcat(sub_indexname, &argv[3][indexname_len - 4]);
     std::cerr << "SSG Path: " << sub_indexname << std::endl;
     std::cerr << "Result Path: " << argv[6] << std::endl;
 
@@ -98,18 +102,18 @@ int main(int argc, char** argv) {
     index.threshold_percent = (float)atof(argv[9]);
 #endif
 
-    index.Load(argv[3]);
+    index.Load(sub_indexname);
     index.OptimizeGraph(data_load);
 
 #ifdef THETA_GUIDED_SEARCH
     // SJ: For profile, related with #THETA_GUIDED_SEARCH flag
     char* hash_function_name = new char[strlen(sub_indexname) + strlen(".hash_function_") + strlen(argv[9]) + 1];
     char* hash_vector_name = new char[strlen(sub_indexname) + strlen(".hash_vector") + strlen(argv[9]) + 1];
-    strcpy(hash_function_name, argv[3]);
+    strcpy(hash_function_name, sub_indexname);
     strcat(hash_function_name, ".hash_function_");
     strcat(hash_function_name, argv[8]);
     strcat(hash_function_name, "b");
-    strcpy(hash_vector_name, argv[3]);
+    strcpy(hash_vector_name, sub_indexname);
     strcat(hash_vector_name, ".hash_vector_");
     strcat(hash_vector_name, argv[8]);
     strcat(hash_vector_name, "b");
@@ -164,9 +168,9 @@ int main(int argc, char** argv) {
   }
 
   std::cerr << "Search Time: " << global_search_time << std::endl;
+  std::cerr << "QPS: " << query_num / global_search_time << std::endl;
 
 #ifdef EVAL_RECALL
-  std::cerr << "QPS: " << query_num / global_search_time << std::endl;
   unsigned int* ground_truth_load = NULL;
   unsigned ground_truth_num, ground_truth_dim;
   ground_truth_load = efanna2e::load_data_ivecs(argv[7], ground_truth_num, ground_truth_dim);
@@ -174,7 +178,7 @@ int main(int argc, char** argv) {
   unsigned int topk_hit = 0;
   for (unsigned int i = 0; i < query_num; i++) {
     unsigned int topk_local_hit = 0;
-    for (unsigned int j = 0; j < K; j++) {
+    for (unsigned int j = 0; j < K * 16; j++) {
       for (unsigned int k = 0; k < K; k++) {
         if (res[i][j] == *(ground_truth_load + i * ground_truth_dim + k)) {
           topk_hit++;
