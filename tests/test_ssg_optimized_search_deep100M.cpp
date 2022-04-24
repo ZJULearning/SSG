@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
 
     omp_set_num_threads(num_threads);
     auto s = std::chrono::high_resolution_clock::now();
-#pragma omp parallel for schedule(dynamic, 10)
+#pragma omp parallel for schedule(dynamic, 1)
     for (unsigned i = 0; i < query_num; i++) {
 #ifdef THREAD_LATENCY
       auto query_start = std::chrono::high_resolution_clock::now();

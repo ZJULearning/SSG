@@ -571,7 +571,7 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
 
       for (unsigned m = 0; m < MaxM; ++m) {
         unsigned int id = neighbors[m];
-#ifdef SORT_BY_EXACT_THETA
+#ifdef GUIDED_BY_EXACT_THETA
         float* data = (float*)(opt_graph_ + node_size * id);
         float norm = *data;
         data++;
@@ -581,7 +581,7 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
         theta_queue[m] = cat_theta_id;
       }
       std::sort(theta_queue.begin(), theta_queue.begin() + MaxM);
-#endif
+#else
         unsigned int hamming_distance = 0;
 #ifdef __AVX__
         unsigned int* hash_value_address = (unsigned int*)(opt_graph_ + node_size * nd_ + hash_len * id);
@@ -626,6 +626,7 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
         }
       }
 #endif
+#endif
 #ifdef PROFILE
       auto hash_approx_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> hash_approx_diff = hash_approx_end - hash_approx_start;
@@ -637,7 +638,6 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
         _mm_prefetch(opt_graph_ + node_size * neighbors[m], _MM_HINT_T0);
 #ifdef THETA_GUIDED_SEARCH
       for (unsigned int m = 0; m < theta_queue_size_limit; m++) {
-//        std::cerr << "id: " << theta_queue[m].id << ", dist: " << theta_queue[m].distance * 180.0 / hash_bitwidth << std::endl;
         unsigned int id = theta_queue[m].id;
         theta_queue[m].distance = -1;
 #else
@@ -654,8 +654,8 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
         if (dist >= retset[L - 1].distance){
 #ifdef GET_MISS_TRAVERSE
           local_traverse++;
-          query_traverse++;
           local_traverse_miss++;
+          query_traverse++;
           query_traverse_miss++;
 #endif          
           continue;
@@ -663,7 +663,7 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
 #ifdef GET_MISS_TRAVERSE
         local_traverse++;
         query_traverse++;
-#endif        
+#endif       
         Neighbor nn(id, dist, true);
         int r = InsertIntoPool(retset.data(), L, nn);
 #ifdef GET_MISS_TRAVERSE
@@ -686,6 +686,9 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
   for (size_t i = 0; i < K; i++) {
     indices[i] = retset[i].id;
   }
+//#ifdef THETA_GUIDED_SEARCH
+//  delete[] hashed_query;
+//#endif
 #ifdef GET_MISS_TRAVERSE
   total_traverse += query_traverse;
   total_traverse_miss += query_traverse_miss;

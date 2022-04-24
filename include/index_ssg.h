@@ -34,9 +34,11 @@ class IndexSSG : public Index {
                           const Parameters &parameters, unsigned *indices);
   void OptimizeGraph(const float *data);
 
+#ifdef GET_MISS_TRAVERSE
   // YS: For profile
   unsigned int total_traverse = 0;
   unsigned int total_traverse_miss = 0;
+#endif
 #ifdef THETA_GUIDED_SEARCH
   // SJ: For SignRandomProjection
   unsigned int hash_bitwidth;
