@@ -576,7 +576,7 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
         float norm = *data;
         data++;
         float inner_product = dist_fast->DistanceInnerProduct::compare(query, data, dimension_);
-        float theta = std::acos(inner_product / (query_norm * norm)) * 180.0 / 3.14159265;
+        float theta = std::acos(inner_product / std::sqrt(query_norm * norm)) * 180.0 / 3.14159265;
         HashNeighbor cat_theta_id(id, theta);
         theta_queue[m] = cat_theta_id;
       }
