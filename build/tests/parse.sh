@@ -5,7 +5,7 @@ export all_data=(sift1M gist1M crawl deep1M)
 parse_log() {
   export dataset=${1} # SIFT1M, GIST1M, CRAWL, DEEP1M
   export tag=${2}
-  export log_list=`find . -name "${dataset}_search_L*${tag}.log" | sort -V`
+  export log_list=`find . -name "${dataset}_search_L*0${tag}.log" | sort -V`
   echo ${log_list} > "${dataset}_${tag}_list.summary"
   # Basic parsing
   export QPS=`cat ${log_list} | grep "QPS" | awk '{printf "%s\n", $2}'`
@@ -19,6 +19,11 @@ parse_log() {
   echo ${query_hash_time} > "${dataset}_${tag}_query_hash_time.summary"
   echo ${hash_approx_time} > "${dataset}_${tag}_hash_approx_time.summary"
   echo ${dist_time} > "${dataset}_${tag}_dist_time.summary"
+  # Traverse report parsing
+  export total_traverse=`cat ${log_list} | grep "Total_summary" | awk '{printf "%s\n", $5}'`
+  export invalid_traverse=`cat ${log_list} | grep "Total_summary" | awk '{printf "%s\n", $9}'`
+  echo ${total_traverse} > "${dataset}_${tag}_total_traverse.summary"
+  echo ${invalid_traverse} > "${dataset}_${tag}_invalid_traverse.summary"
 }
 
 if [ $# == 2 ]; then
