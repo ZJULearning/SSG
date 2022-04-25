@@ -31,8 +31,8 @@ add_definitions(-std=c++11 -O3 -lboost -ltcmalloc_minimal -march=native -Wall -D
 
 # Add define
 add_definitions(-DEVAL_RECALL)
-#add_definitions(-DTHETA_GUIDED_SEARCH)
-add_definitions(-DTHETA_GUIDED_SEARCH -DGUIDED_BY_EXACT_THETA)
+add_definitions(-DTHETA_GUIDED_SEARCH -DGUIDED_BY_APPROX_THETA)
+#add_definitions(-DTHETA_GUIDED_SEARCH -DGUIDED_BY_EXACT_THETA)
 #add_definitions(-DTHREAD_LATENCY)
 #add_definitions(-DPROFILE)
 add_definitions(-DGET_MISS_TRAVERSE)
