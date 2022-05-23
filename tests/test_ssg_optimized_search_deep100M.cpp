@@ -64,6 +64,7 @@ int main(int argc, char** argv) {
   global_timer.resize(num_timer, 0.0);
 #endif
 
+#pragma omp parallel for schedule(dynamic, 1)
   for (unsigned int iter = 0; iter < 16; iter++) {
     unsigned points_num, dim;
     float* data_load = nullptr;
@@ -140,7 +141,7 @@ int main(int argc, char** argv) {
 
     omp_set_num_threads(num_threads);
     auto s = std::chrono::high_resolution_clock::now();
-#pragma omp parallel for schedule(dynamic, 1)
+//#pragma omp parallel for schedule(dynamic, 1)
     for (unsigned i = 0; i < query_num; i++) {
 #ifdef THREAD_LATENCY
       auto query_start = std::chrono::high_resolution_clock::now();
@@ -180,12 +181,14 @@ int main(int argc, char** argv) {
     unsigned int topk_local_hit = 0;
     for (unsigned int j = 0; j < K * 16; j++) {
       for (unsigned int k = 0; k < K; k++) {
-        if (res[i][j] == *(ground_truth_load + i * ground_truth_dim + k)) {
+//        std::cerr << res[i][j] << ", " << *(ground_truth_load + i * ground_truth_dim + k) << std::endl;
+        if (res[i][j] + (6250000 * (j % K)) == *(ground_truth_load + i * ground_truth_dim + k)) {
           topk_hit++;
           break;
         }
       }
     }
+//    std::cerr << std::endl;
   }
   std::cerr << (float)topk_hit / (query_num * K) * 100 << "%" << std::endl;
 #endif
