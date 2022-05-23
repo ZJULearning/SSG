@@ -54,9 +54,10 @@ int main(int argc, char** argv) {
 
   unsigned int num_threads = atoi(argv[10]);
 
-  double global_search_time = 0.0;
+  std::vector<double> global_search_time(16, 0.0);
 #ifdef THREAD_LATENCY
-  std::vector<double> latency_stats(query_num, 0);
+  std::vector<std::vector<double> > latency_stats(16);
+  for (unsigned i = 0; i < 16; i++) latency_stats[i].resize(query_num);
 #endif
 #ifdef PROFILE
   unsigned num_timer = 3;
@@ -141,7 +142,6 @@ int main(int argc, char** argv) {
 
     omp_set_num_threads(num_threads);
     auto s = std::chrono::high_resolution_clock::now();
-//#pragma omp parallel for schedule(dynamic, 1)
     for (unsigned i = 0; i < query_num; i++) {
 #ifdef THREAD_LATENCY
       auto query_start = std::chrono::high_resolution_clock::now();
@@ -150,13 +150,13 @@ int main(int argc, char** argv) {
 #ifdef THREAD_LATENCY
       auto query_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> query_diff = query_end - query_start;
-      latency_stats[i] += query_diff.count() * 1000000;
+      latency_stats[iter][i] = query_diff.count() * 1000000;
 #endif
     }
     auto e = std::chrono::high_resolution_clock::now();
 
     std::chrono::duration<double> diff = e - s;
-    global_search_time += diff.count();
+    global_search_time[iter] += diff.count();
 
     // SJ: free dynamic alloc arrays
     delete[] data_load;
@@ -168,8 +168,9 @@ int main(int argc, char** argv) {
 #endif
   }
 
-  std::cerr << "Search Time: " << global_search_time << std::endl;
-  std::cerr << "QPS: " << query_num / global_search_time << std::endl;
+  std::sort(global_search_time.begin(), global_search_time.end());
+  std::cerr << "Search Time: " << global_search_time[15] << std::endl;
+  std::cerr << "QPS: " << query_num / global_search_time[15] << std::endl;
 
 #ifdef EVAL_RECALL
   unsigned int* ground_truth_load = NULL;
@@ -193,14 +194,16 @@ int main(int argc, char** argv) {
   std::cerr << (float)topk_hit / (query_num * K) * 100 << "%" << std::endl;
 #endif
 #ifdef THREAD_LATENCY
-  std::sort(latency_stats.begin(), latency_stats.end());
-  double mean_latency = 0;
-  for (uint64_t q = 0; q < query_num; q++) {
-    mean_latency += latency_stats[q];
+  for (unsigned int iter = 0; iter < 16; iter++) {
+    std::sort(latency_stats[iter].begin(), latency_stats[iter].end());
+    double mean_latency = 0;
+    for (uint64_t q = 0; q < query_num; q++) {
+      mean_latency += latency_stats[iter][q];
+    }
+    mean_latency /= query_num;
+    std::cerr << iter << "th graph mean_latency: " << mean_latency << "us" << std::endl;
+    std::cerr << iter << "th graph 99% latency: " << latency_stats[iter][(unsigned long long)(0.999 * query_num)] << "us"<< std::endl;
   }
-  mean_latency /= query_num;
-  std::cerr << "mean_latency: " << mean_latency << "ms" << std::endl;
-  std::cerr << "99% latency: " << latency_stats[(unsigned long long)(0.999 * query_num)] << "ms"<< std::endl;
 #endif
 #ifdef PROFILE
   std::cerr << "========Thread Latency Report========" << std::endl;
