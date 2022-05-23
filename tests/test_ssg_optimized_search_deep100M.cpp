@@ -182,7 +182,7 @@ int main(int argc, char** argv) {
     for (unsigned int j = 0; j < K * 16; j++) {
       for (unsigned int k = 0; k < K; k++) {
 //        std::cerr << res[i][j] << ", " << *(ground_truth_load + i * ground_truth_dim + k) << std::endl;
-        if (res[i][j] + (6250000 * (j % K)) == *(ground_truth_load + i * ground_truth_dim + k)) {
+        if (res[i][j] + (6250000 * (j / K)) == *(ground_truth_load + i * ground_truth_dim + k)) {
           topk_hit++;
           break;
         }
