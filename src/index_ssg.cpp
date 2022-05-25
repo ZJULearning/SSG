@@ -611,7 +611,7 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
 //        std::cerr << std::endl;
 #endif
         HashNeighbor cat_hamming_id(id, hamming_distance);
-        if (theta_queue_size < theta_queue_size_limit) {
+        if ((theta_queue_size < theta_queue_size_limit) || (hamming_distance == hamming_distance_max.distance)) {
           theta_queue[theta_queue_size] = cat_hamming_id;
           theta_queue_size++;
           index = std::max_element(theta_queue.begin(), theta_queue.begin() + theta_queue_size_limit);
@@ -620,7 +620,8 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
         }
         else if (hamming_distance < hamming_distance_max.distance) {
           theta_queue[hamming_distance_max.id] = cat_hamming_id;
-          index = std::max_element(theta_queue.begin(), theta_queue.begin() + theta_queue_size_limit);
+          theta_queue_size = theta_queue_size_limit;
+          index = std::max_element(theta_queue.begin(), theta_queue.begin() + theta_queue_size);
           hamming_distance_max.id = std::distance(theta_queue.begin(), index);
           hamming_distance_max.distance = theta_queue[hamming_distance_max.id].distance;
         }
@@ -637,7 +638,7 @@ void IndexSSG::SearchWithOptGraph(const float *query, size_t K,
       for (unsigned m = 0; m < MaxM; ++m)
         _mm_prefetch(opt_graph_ + node_size * neighbors[m], _MM_HINT_T0);
 #ifdef THETA_GUIDED_SEARCH
-      for (unsigned int m = 0; m < theta_queue_size_limit; m++) {
+      for (unsigned int m = 0; m < theta_queue_size; m++) {
         unsigned int id = theta_queue[m].id;
         theta_queue[m].distance = -1;
 #else
