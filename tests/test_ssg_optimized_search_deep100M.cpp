@@ -169,8 +169,17 @@ int main(int argc, char** argv) {
   }
 
   std::sort(global_search_time.begin(), global_search_time.end());
-  std::cerr << "Search Time: " << global_search_time[15] << std::endl;
-  std::cerr << "QPS: " << query_num / global_search_time[15] << std::endl;
+  if (num_threads > 1) {
+    std::cerr << "Search Time: " << global_search_time[15] << std::endl;
+    std::cerr << "QPS: " << query_num / global_search_time[15] << std::endl;
+  }
+  else {
+    for (unsigned int iter = 0; iter < 15; iter++) {
+      global_search_time[15] += global_search_time[iter];
+    }
+    std::cerr << "Search Time: " << global_search_time[15] << std::endl;
+    std::cerr << "QPS: " << query_num / global_search_time[15] << std::endl;
+  }
 
 #ifdef EVAL_RECALL
   unsigned int* ground_truth_load = NULL;
