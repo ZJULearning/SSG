@@ -51,6 +51,8 @@ class IndexSSG : public Index {
   bool LoadHashValue (char* file_name);
   float threshold_percent;
   size_t hash_len;
+  void GenerateQueryHash (const float* query, unsigned* hashed_query, unsigned hash_size);
+  unsigned int FilterNeighbors (const __m256i* hashed_query_avx, std::vector<HashNeighbor>& theta_queue, const unsigned* neighbors, const unsigned MaxM, const unsigned hash_size);
 #endif
 #ifdef PROFILE
   unsigned int num_timer = 0;
