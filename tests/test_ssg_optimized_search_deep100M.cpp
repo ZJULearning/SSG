@@ -133,10 +133,11 @@ int main(int argc, char** argv) {
     index.num_timer = num_timer;
     index.profile_time.resize(num_threads * index.num_timer, 0.0);
 #endif
+    boost::dynamic_bitset<> flags{index.get_nd(), 0};
     // Warm up
     for (int loop = 0; loop < 3; ++loop) {
       for (unsigned i = 0; i < 10; ++i) {
-        index.SearchWithOptGraph(query_load + i * dim, K, paras, res[i].data() + K * iter);
+        index.SearchWithOptGraph(query_load + i * dim, flags, K, paras, res[i].data() + K * iter);
       }
     }
 
@@ -146,7 +147,7 @@ int main(int argc, char** argv) {
 #ifdef THREAD_LATENCY
       auto query_start = std::chrono::high_resolution_clock::now();
 #endif
-      index.SearchWithOptGraph(query_load + i * dim, K, paras, res[i].data() + K * iter);
+      index.SearchWithOptGraph(query_load + i * dim, flags, K, paras, res[i].data() + K * iter);
 #ifdef THREAD_LATENCY
       auto query_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> query_diff = query_end - query_start;

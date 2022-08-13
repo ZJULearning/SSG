@@ -30,7 +30,7 @@ class IndexSSG : public Index {
 
   virtual void Search(const float *query, const float *x, size_t k,
                       const Parameters &parameters, unsigned *indices) override;
-  void SearchWithOptGraph(const float *query, size_t K,
+  void SearchWithOptGraph(const float *query, boost::dynamic_bitset<>& flags, size_t K,
                           const Parameters &parameters, unsigned *indices);
   void OptimizeGraph(const float *data);
 
@@ -58,6 +58,7 @@ class IndexSSG : public Index {
   unsigned int num_timer = 0;
   std::vector<double> profile_time;
 #endif
+  size_t get_nd() { return nd_; }
 
  protected:
   typedef std::vector<std::vector<unsigned>> CompactGraph;

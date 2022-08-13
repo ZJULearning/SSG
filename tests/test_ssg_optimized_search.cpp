@@ -107,21 +107,22 @@ int main(int argc, char** argv) {
   index.num_timer = 3;
   index.profile_time.resize(num_threads * index.num_timer, 0.0);
 #endif
+  boost::dynamic_bitset<> flags{index.get_nd(), 0};
   // Warm up
   for (int loop = 0; loop < 3; ++loop) {
     for (unsigned i = 0; i < 10; ++i) {
-      index.SearchWithOptGraph(query_load + i * dim, K, paras, res[i].data());
+      index.SearchWithOptGraph(query_load + i * dim, flags, K, paras, res[i].data());
     }
   }
 
   omp_set_num_threads(num_threads);
   auto s = std::chrono::high_resolution_clock::now();
-#pragma omp parallel for schedule(dynamic, 10)
+//#pragma omp parallel for schedule(dynamic, 10)
   for (unsigned i = 0; i < query_num; i++) {
 #ifdef THREAD_LATENCY
     auto query_start = std::chrono::high_resolution_clock::now();
 #endif
-    index.SearchWithOptGraph(query_load + i * dim, K, paras, res[i].data());
+    index.SearchWithOptGraph(query_load + i * dim, flags, K, paras, res[i].data());
 #ifdef THREAD_LATENCY
    auto query_end = std::chrono::high_resolution_clock::now();
    std::chrono::duration<double> query_diff = query_end - query_start;
