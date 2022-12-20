@@ -21,29 +21,36 @@ void save_result(char* filename, std::vector<std::vector<unsigned> >& results) {
 }
 
 int main(int argc, char** argv) {
+  int sub_id = -1;
 #ifdef ADA_NNS
   if (argc < 11) {
-    std::cout << " data_file query_file ssg_path L K result_path ground_truth_path tau hash_bitwidth num_threads [seed]"
+    std::cout << " data_file query_file ssg_path L K result_path ground_truth_path tau hash_bitwidth num_threads [sub_id] [seed]"
               << std::endl;
     exit(-1);
   }
 
-  if (argc == 12) {
-    unsigned seed = (unsigned)atoi(argv[11]);
-    srand(seed);
-    std::cerr << "Using Seed " << seed << std::endl;
+  if (argc < 14) {
+    sub_id = (int)atoi(argv[11]);
+    if (argc == 13) {
+      unsigned seed = (unsigned)atoi(argv[12]);
+      srand(seed);
+      std::cerr << "Using Seed " << seed << std::endl;
+    }
   }
 #else
   if (argc < 9) {
-    std::cout << " data_file query_file ssg_path L K result_path ground_truth_path num_threads [seed]"
+    std::cout << " data_file query_file ssg_path L K result_path ground_truth_path num_threads [sub_id] [seed]"
               << std::endl;
     exit(-1);
   }
 
-  if (argc == 10) {
-    unsigned seed = (unsigned)atoi(argv[9]);
-    srand(seed);
-    std::cerr << "Using Seed " << seed << std::endl;
+  if (argc < 11) {
+    sub_id = (int)atoi(argv[8]);
+    if (argc == 10) {
+      unsigned seed = (unsigned)atoi(argv[9]);
+      srand(seed);
+      std::cerr << "Using Seed " << seed << std::endl;
+    }
   }
 #endif
 
@@ -95,6 +102,8 @@ int main(int argc, char** argv) {
   strcat(hashed_set_name, ".hashed_set_");
   strcat(hashed_set_name, argv[9]);
   strcat(hashed_set_name, "b");
+  std::cerr << "hash_function_name: " << hash_function_name << std::endl;
+  std::cerr << "hashed_set_name: " << hashed_set_name  << std::endl;
 
   if (index.ReadHashFunction(hash_function_name)) {
     if (!index.ReadHashedSet(hashed_set_name))
@@ -169,9 +178,17 @@ int main(int argc, char** argv) {
   for (unsigned int i = 0; i < query_num; i++) {
     for (unsigned int j = 0; j < K; j++) {
       for (unsigned int k = 0; k < K; k++) {
-        if (res[i][j] == *(ground_truth_load + i * ground_truth_dim + k)) {
-          topk_hit++;
-          break;
+        if (sub_id == -1) {
+          if (res[i][j] == *(ground_truth_load + i * ground_truth_dim + k)) {
+            topk_hit++;
+            break;
+          }
+        }
+        else { // [ARC-SJ] Recall for deep100M_16T
+          if (res[i][j] + (6250000 * sub_id) == *(ground_truth_load + i * ground_truth_dim + k)) {
+            topk_hit++;
+            break;
+          }
         }
       }
     }

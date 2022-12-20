@@ -135,10 +135,19 @@ ssg_deep100M_16T() {
   done
 
   # Perform search
-  echo "Perform kNN searching using SSG index (deep100M_L${1}K${2}T${4})"
+  echo "Perform kNN searching using SSG index (deep100M_L${1}K${2}T16)"
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
-  ./test_ssg_optimized_search_deep100M deep100M/deep100M_base.fvecs deep100M/deep100M_query.fvecs deep100M.ssg ${1} ${2} deep100M_ssg_result_L${1}K${2}_${3}_T${4}.ivecs \
-    deep100M/deep100M_groundtruth.ivecs ${4} 2> deep100M_search_L${1}K${2}_${3}_T${4}.log
+  for id in ${sub_num[@]}; do
+    ./test_ssg_optimized_search deep100M/deep100M_base_${id}.fvecs deep100M/deep100M_query.fvecs deep100M_${id}.ssg ${1} ${2} deep100M_ssg_result_L${1}K${2}_${3}_T16_${id}.ivecs \
+      deep100M/deep100M_groundtruth.ivecs ${id} 2> deep100M_search_L${1}K${2}_${3}_T16_${id}.log &
+  done
+  wait
+  rm -rf deep100M_search_L${1}K${2}_${3}_T16.log
+  for id in ${sub_num[@]}; do
+    awk 'NR==8{ printf "%s ", $2; exit }' deep100M_search_L${1}K${2}_${3}_T16_${id}.log >> deep100M_search_L${1}K${2}_${3}_T16.log
+    awk 'NR==9{ print substr($0, 1, length($0) - 1); exit }' deep100M_search_L${1}K${2}_${3}_T16_${id}.log >> deep100M_search_L${1}K${2}_${3}_T16.log
+  done
+  cat deep100M_search_L${1}K${2}_${3}_T16.log | awk '{sum += $2;} {if(NR==1) min = $1} {if($1 < min) min = $1} END { print "min_qps: " min; print "recall: " sum; }' >> deep100M_search_L${1}K${2}_${3}_T16.log 
 }
 
 if [[ ${#} -eq 1 ]]; then
@@ -192,7 +201,7 @@ if [[ ${#} -eq 1 ]]; then
       for l_size in ${L_SIZE[@]}; do
         declare -i l=l_size
         for t in ${THREAD[@]}; do
-          ssg_deep100M ${l} ${k} baseline ${t}
+          ssg_deep100M_1T ${l} ${k} baseline ${t}
         done
       done
     done
@@ -200,7 +209,7 @@ if [[ ${#} -eq 1 ]]; then
     for k in ${K[@]}; do
       for l_size in ${L_SIZE[@]}; do
         declare -i l=l_size
-        ssg_deep100M ${l} ${k} baseline 1
+        ssg_deep100M_16T ${l} ${k} baseline 1
       done
     done
   elif [ "${1}" == "all" ]; then
