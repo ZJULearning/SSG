@@ -59,7 +59,7 @@ The argument is as follows:
 
 (i) dataset: Name of the dataset. The script supports various real datasets (e.g., SIFT1M, GIST1M, CRAWL, DEEP1M, DEEP100M_16T).
 
-To change parameter for search (e.g., K, L, number of threads), open `evaluate_baseline.sh` and modify the parameter `K, L_SIZE, T`.
+To change parameter for search (e.g., K, L, number of threads), open `evaluate_baseline.sh` and modify the parameter `K, L_SIZE, THREAD`.
 
 To use the ADA-NNS, use the `tests/evaluate_ADA-NNS.sh` script:
 ```shell
@@ -68,4 +68,4 @@ $ ./evaluate_ADA-NNS.sh [dataset]
 ```
 The arguments is same as above in `evaluate_baseline.sh`.
 
-To change parameter for search (e.g., K, L, number of threads), open `evaluate_ADA-NNS.sh` and modify the parameter `K, L_SIZE, T`.
+To change parameter for search (e.g., K, L, number of threads), open `evaluate_ADA-NNS.sh` and modify the parameter `K, L_SIZE, THREAD`.
