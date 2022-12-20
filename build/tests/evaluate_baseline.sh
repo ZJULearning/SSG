@@ -139,7 +139,7 @@ ssg_deep100M_16T() {
   sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
   for id in ${sub_num[@]}; do
     ./test_ssg_optimized_search deep100M/deep100M_base_${id}.fvecs deep100M/deep100M_query.fvecs deep100M_${id}.ssg ${1} ${2} deep100M_ssg_result_L${1}K${2}_${3}_T16_${id}.ivecs \
-      deep100M/deep100M_groundtruth.ivecs ${id} 2> deep100M_search_L${1}K${2}_${3}_T16_${id}.log &
+      deep100M/deep100M_groundtruth.ivecs ${4} ${id} 2> deep100M_search_L${1}K${2}_${3}_T16_${id}.log &
   done
   wait
   rm -rf deep100M_search_L${1}K${2}_${3}_T16.log

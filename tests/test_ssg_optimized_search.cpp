@@ -44,10 +44,10 @@ int main(int argc, char** argv) {
     exit(-1);
   }
 
-  if (argc < 11) {
-    sub_id = (int)atoi(argv[8]);
-    if (argc == 10) {
-      unsigned seed = (unsigned)atoi(argv[9]);
+  if (argc < 12) {
+    sub_id = (int)atoi(argv[9]);
+    if (argc == 11) {
+      unsigned seed = (unsigned)atoi(argv[10]);
       srand(seed);
       std::cerr << "Using Seed " << seed << std::endl;
     }
