@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
   }
 
   if (argc == 10) {
-    unsigned seed = (unsigned)atoi(argv[11]);
+    unsigned seed = (unsigned)atoi(argv[9]);
     srand(seed);
     std::cerr << "Using Seed " << seed << std::endl;
   }
