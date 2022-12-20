@@ -31,13 +31,10 @@ add_definitions(-std=c++11 -O3 -lboost -ltcmalloc_minimal -march=native -Wall -D
 
 # Add define
 add_definitions(-DEVAL_RECALL)
-add_definitions(-DADA_NNS)
-#add_definitions(-DHUGE_PAGE)
-#add_definitions(-DTHREAD_LATENCY)
-#add_definitions(-DPROFILE)
-#add_definitions(-DGET_MISS_TRAVERSE)
-#add_definitions(-DGET_VISITED)
-#add_definitions(-DGET_NHOPS)
+add_definitions (-DGET_DIST_COMP) # [ARC-SJ] Enable to measure Speedup
+add_definitions (-DPROFILE) # [ARC-SJ] Enable to measure the performance bottleneck
+#add_definitions(-DMMAP_HUGETLB) # [ARC-SJ] Enable to allocate huge page instead of malloc
+add_definitions (-DTHREAD_LATENCY) # [ARC-SJ] Enable to measure mean latency & 99% latency
 
 # Source codes
 add_subdirectory(src)
