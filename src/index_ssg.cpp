@@ -470,13 +470,6 @@ void IndexSSG::SearchWithOptGraph(const float *query, boost::dynamic_bitset<>& f
   unsigned L = parameters.Get<unsigned>("L_search");
   DistanceFastL2 *dist_fast = (DistanceFastL2 *)distance_;
 
-#ifdef THETA_GUIDED_SEARCH
-  std::vector<HashNeighbor> theta_queue(512);
-  unsigned int* hashed_query = new unsigned int[hash_bitwidth >> 5];
-#endif
-#ifdef PROFILE
-  unsigned int tid = omp_get_thread_num();
-#endif
   std::vector<Neighbor> retset(L + 1);
   std::vector<unsigned> init_ids(L);
   std::mt19937 rng(rand());
@@ -485,9 +478,18 @@ void IndexSSG::SearchWithOptGraph(const float *query, boost::dynamic_bitset<>& f
   for(unsigned i=0; i<eps_.size(); i++){
     init_ids[i] = eps_[i];
   }
-
-  flags.reset();
+#ifdef PROFILE
+  unsigned int tid = omp_get_thread_num();
+  auto visited_list_init_start = std::chrono::high_resolution_clock::now();
+#endif
+//  [ARC-SJ] Initialize visited list, allocation moved to main module
 //  boost::dynamic_bitset<> flags{nd_, 0};
+  flags.reset();
+#ifdef PROFILE
+  auto visited_list_init_end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> visited_list_init_diff = visited_list_init_end - visited_list_init_start;
+  profile_time[tid * 4] += visited_list_init_diff.count() * 1000000;
+#endif
   for (unsigned i = 0; i < init_ids.size(); i++) {
     unsigned id = init_ids[i];
     if (id >= nd_) continue;
@@ -508,36 +510,32 @@ void IndexSSG::SearchWithOptGraph(const float *query, boost::dynamic_bitset<>& f
   // std::cout<<L<<std::endl;
 
   std::sort(retset.begin(), retset.begin() + L);
+#ifdef ADA_NNS
 #ifdef PROFILE
   auto query_hash_start = std::chrono::high_resolution_clock::now();
 #endif
-#ifdef THETA_GUIDED_SEARCH
-  unsigned int hash_size = hash_bitwidth >> 5;
-  GenerateQueryHash(query, hashed_query, hash_size); 
-  __m256i hashed_query_avx[6];
-  for (unsigned int m = 0; m < (hash_size >> 3); m++) {
-    hashed_query_avx[m] = _mm256_loadu_si256((__m256i*)(hashed_query));
-    hashed_query += 8;
+  std::vector<HashNeighbor> selected_pool(100);
+  unsigned int hash_size = hash_bitwidth_ >> 5;
+  unsigned int* hashed_query = new unsigned int[hash_size];
+  QueryHash(query, hashed_query, hash_size); 
+#ifdef __AVX__
+  unsigned int hash_avx_size = hash_size >> 3;
+  __m256i hashed_query_avx[hash_avx_size];
+  for (unsigned int m = 0; m < hash_avx_size; m++) {
+    hashed_query_avx[m] = _mm256_loadu_si256((__m256i*)&hashed_query[m << 3]);
   }
 #endif
 #ifdef PROFILE
   auto query_hash_end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> query_hash_diff = query_hash_end - query_hash_start;
-  profile_time[tid * num_timer] += query_hash_diff.count() * 1000000;
+  profile_time[tid * 4 + 1] += query_hash_diff.count() * 1000000;
+#endif
 #endif
 
   int k = 0;
-#ifdef GET_MISS_TRAVERSE
-  unsigned int query_traverse = 0;
-  unsigned int query_traverse_miss = 0;
-#endif
   while (k < (int)L) {
     int nk = L;
-#ifdef GET_MISS_TRAVERSE
-    unsigned int local_traverse = 0;
-    unsigned int local_traverse_miss = 0;
-    std::vector<unsigned> inserted_ids;
-#endif
+
     if (retset[k].flag) {
       retset[k].flag = false;
       unsigned n = retset[k].id;
@@ -545,25 +543,25 @@ void IndexSSG::SearchWithOptGraph(const float *query, boost::dynamic_bitset<>& f
       unsigned *neighbors = (unsigned *)(opt_graph_ + node_size * n + data_len);
       unsigned MaxM = *neighbors;
       neighbors++;
-
+#ifdef ADA_NNS
 #ifdef PROFILE
-      auto hash_approx_start = std::chrono::high_resolution_clock::now();
+      auto cand_select_start = std::chrono::high_resolution_clock::now();
 #endif
-#ifdef THETA_GUIDED_SEARCH
-      unsigned int theta_queue_size = FilterNeighbors(hashed_query_avx, theta_queue, neighbors, MaxM, hash_size);
+      unsigned int selected_pool_size = CandidateSelection(hashed_query_avx, selected_pool, neighbors, MaxM, hash_size);
+#ifdef PROFILE
+      auto cand_select_end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> cand_select_diff = cand_select_end - cand_select_start;
+      profile_time[tid * 4 + 2] += cand_select_diff.count() * 1000000;
+#endif
 #endif
 #ifdef PROFILE
-      auto hash_approx_end = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> hash_approx_diff = hash_approx_end - hash_approx_start;
-      profile_time[tid * num_timer + 1] += hash_approx_diff.count() * 1000000;
       auto dist_start = std::chrono::high_resolution_clock::now();
 #endif
-
-#ifdef THETA_GUIDED_SEARCH
-      for (unsigned m = 0; m < theta_queue_size; ++m)
-        _mm_prefetch(opt_graph_ + node_size * theta_queue[m].id, _MM_HINT_T0);
-      for (unsigned int m = 0; m < theta_queue_size; m++) {
-        unsigned int id = theta_queue[m].id;
+#ifdef ADA_NNS
+      for (unsigned m = 0; m < selected_pool_size; ++m)
+        _mm_prefetch(opt_graph_ + node_size * selected_pool[m].id, _MM_HINT_T0);
+      for (unsigned int m = 0; m < selected_pool_size; m++) {
+        unsigned int id = selected_pool[m].id;
 #else
       for (unsigned m = 0; m < MaxM; ++m)
         _mm_prefetch(opt_graph_ + node_size * neighbors[m], _MM_HINT_T0);
@@ -577,31 +575,27 @@ void IndexSSG::SearchWithOptGraph(const float *query, boost::dynamic_bitset<>& f
         data++;
         float dist =
             dist_fast->compare(query, data, norm, (unsigned)dimension_);
+#ifdef GET_DIST_COMP
+        total_dist_comp_++;
         if (dist >= retset[L - 1].distance){
-#ifdef GET_MISS_TRAVERSE
-          local_traverse++;
-          local_traverse_miss++;
-          query_traverse++;
-          query_traverse_miss++;
-#endif          
+          total_dist_comp_miss_++;
           continue;
         }
-#ifdef GET_MISS_TRAVERSE
-        local_traverse++;
-        query_traverse++;
-#endif       
+#else
+        if (dist >= retset[L - 1].distance){
+          continue;
+        }
+#endif
         Neighbor nn(id, dist, true);
         int r = InsertIntoPool(retset.data(), L, nn);
-#ifdef GET_MISS_TRAVERSE
-        inserted_ids.push_back(id);
-#endif
+
         // if(L+1 < retset.size()) ++L;
         if (r < nk) nk = r;
       }
 #ifdef PROFILE
       auto dist_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> dist_diff = dist_end - dist_start;
-      profile_time[tid * num_timer + 2] += dist_diff.count() * 1000000;
+      profile_time[tid * 4 + 3] += dist_diff.count() * 1000000;
 #endif
     }
     if (nk <= k)
@@ -612,14 +606,6 @@ void IndexSSG::SearchWithOptGraph(const float *query, boost::dynamic_bitset<>& f
   for (size_t i = 0; i < K; i++) {
     indices[i] = retset[i].id;
   }
-//#ifdef THETA_GUIDED_SEARCH
-//  delete[] hashed_query;
-//#endif
-#ifdef GET_MISS_TRAVERSE
-  total_traverse += query_traverse;
-  total_traverse_miss += query_traverse_miss;
-//  printf("[Query_summary] # of traversed: %u, # of invalid: %u, ratio: %.2f%%\n", query_traverse, query_traverse_miss, (float)query_traverse_miss / query_traverse * 100);
-#endif
 }
 
 void IndexSSG::OptimizeGraph(const float *data) {  // use after build or load
@@ -627,16 +613,21 @@ void IndexSSG::OptimizeGraph(const float *data) {  // use after build or load
   data_ = data;
   data_len = (dimension_ + 1) * sizeof(float);
   neighbor_len = (width + 1) * sizeof(unsigned);
-#ifdef THETA_GUIDED_SEARCH
-  hash_len = (hash_bitwidth >> 3); // SJ: Append hash_values
-  node_size = data_len + neighbor_len + hash_len;
-  hash_function_size = dimension_ * hash_bitwidth * sizeof(float);
-//  opt_graph_ = (char *)mmap(NULL, node_size * nd_ + hash_function_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_POPULATE | MAP_ANONYMOUS | MAP_HUGETLB, -1 ,0);
-  opt_graph_ = (char *)malloc(node_size * nd_ + hash_function_size);
-#else
   node_size = data_len + neighbor_len;
-//  opt_graph_ = (char *)mmap(NULL, node_size * nd_, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_POPULATE | MAP_ANONYMOUS | MAP_HUGETLB, -1 ,0);
+#ifdef ADA_NNS
+  uint64_t hash_len = (hash_bitwidth_ >> 3);
+  uint64_t hash_function_size = dimension_ * hash_bitwidth_ * sizeof(float);
+#ifdef MMAP_HUGETLB
+  opt_graph_ = (char *) mmap(NULL, node_size * nd_ + hash_len * nd_ + hash_function_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_POPULATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
+#else
+  opt_graph_ = (char *)malloc(node_size * nd_ + hash_len * nd_ + hash_function_size);
+#endif
+#else
+#ifdef MMAP_HUGETLB
+  opt_graph_ = (char *) mmap(NULL, node_size * nd_, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_POPULATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
+#else
   opt_graph_ = (char *)malloc(node_size * nd_);
+#endif
 #endif
   DistanceFastL2 *dist_fast = (DistanceFastL2 *)distance_;
   for (unsigned i = 0; i < nd_; i++) {
@@ -840,84 +831,92 @@ void IndexSSG::DFS_expand(const Parameters &parameter) {
   }
 }
 
-#ifdef THETA_GUIDED_SEARCH
-// SJ: For SRP
+#ifdef ADA_NNS 
 void IndexSSG::GenerateHashFunction (char* file_name) {
   DistanceFastL2* dist_fast = (DistanceFastL2*) distance_;
   std::normal_distribution<float> norm_dist (0.0, 1.0);
   std::mt19937 gen(rand());
-  hash_function = (float*)(opt_graph_ + node_size * nd_);
-  float hash_function_norm[hash_bitwidth - 1];
+  uint64_t hash_len = (hash_bitwidth_ >> 3);
+  hash_function_ = (float*)(opt_graph_ + node_size * nd_ + hash_len * nd_);
+  float hash_function_norm[hash_bitwidth_ - 1];
 
-  std::cout << "GenerateHashFunction" << std::endl;
+  std::cerr << "GenerateHashFunction" << std::endl;
+  auto s = std::chrono::high_resolution_clock::now();
   for (unsigned int dim = 0; dim < dimension_; dim++) { // Random generated vector
-    hash_function[dim] = norm_dist(gen);
+    hash_function_[dim] = norm_dist(gen);
   }
-  hash_function_norm[0] = dist_fast->norm(hash_function, dimension_);
+  hash_function_norm[0] = dist_fast->norm(hash_function_, dimension_);
 
-  for (unsigned int hash_col = 1; hash_col < hash_bitwidth; hash_col++) { // Iterate to generate vectors orthogonal to 0th column
+  for (unsigned int hash_col = 1; hash_col < hash_bitwidth_; hash_col++) { // Iterate to generate vectors orthogonal to 0th column
     for (unsigned int dim = 0; dim < dimension_; dim++) { // Random generated vector
-       hash_function[hash_col * dimension_ + dim] = norm_dist(gen);
+       hash_function_[hash_col * dimension_ + dim] = norm_dist(gen);
     }
-    hash_function_norm[hash_col] = dist_fast->norm(&hash_function[hash_col * dimension_], dimension_);
 
     // Gram-schmidt process
     for (unsigned int compare_col = 0; compare_col < hash_col; compare_col++) {
-      float inner_product_between_hash = dist_fast->DistanceInnerProduct::compare(&hash_function[hash_col * dimension_], &hash_function[compare_col * dimension_], (unsigned)dimension_);
+      float inner_product_between_hash = dist_fast->DistanceInnerProduct::compare(&hash_function_[hash_col * dimension_], &hash_function_[compare_col * dimension_], (unsigned)dimension_);
       for (unsigned int dim = 0; dim < dimension_; dim++) {
-        hash_function[hash_col * dimension_ + dim] -= (inner_product_between_hash / hash_function_norm[compare_col] * hash_function[compare_col * dimension_ + dim]);
+        hash_function_[hash_col * dimension_ + dim] -= (inner_product_between_hash / hash_function_norm[compare_col] * hash_function_[compare_col * dimension_ + dim]);
       }
     }
+    hash_function_norm[hash_col] = dist_fast->norm(&hash_function_[hash_col * dimension_], dimension_);
   }
+  auto e = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> diff = e - s;
+//    std::cout << "HashFunction generation time: " << diff.count() * 1000 << std::endl;;
 
   std::ofstream file_hash_function(file_name, std::ios::binary | std::ios::out);
-  file_hash_function.write((char*)&hash_bitwidth, sizeof(unsigned int));
-  file_hash_function.write((char*)hash_function, dimension_ * hash_bitwidth * sizeof(float));
+  file_hash_function.write((char*)&hash_bitwidth_, sizeof(unsigned int));
+  file_hash_function.write((char*)hash_function_, dimension_ * hash_bitwidth_ * sizeof(float));
   file_hash_function.close();
 }
-void IndexSSG::GenerateHashValue (char* file_name) {
+void IndexSSG::GenerateHashedSet (char* file_name) {
   DistanceFastL2* dist_fast = (DistanceFastL2*) distance_;
+  uint64_t hash_len = (hash_bitwidth_ >> 3);
 
-  std::cout << "GenerateHashValue" << std::endl;
+  std::cerr << "GenerateHashedSet" << std::endl;
+  auto s = std::chrono::high_resolution_clock::now();
+#pragma omp parallel for schedule(dynamic, 1)
   for (unsigned int i = 0; i < nd_; i++) {
-    unsigned int* neighbors = (unsigned int*)(opt_graph_ + node_size * i + data_len);
-    unsigned int MaxM = *neighbors;
-    neighbors++;
-    unsigned int* hash_value = (unsigned int*)(opt_graph_ + node_size * i + data_len + neighbor_len);
-
+    hashed_set_ = (unsigned int*)(opt_graph_ + node_size * nd_ + hash_len * i);
     float* vertex = (float *)(opt_graph_ + node_size * i + sizeof(float));
-    for (unsigned int i = 0; i < hash_bitwidth / (8 * sizeof(unsigned int)); i++) {
-      unsigned int hash_value_temp = 0;
-      for (unsigned int bit_count = 0; bit_count < (8 * sizeof(unsigned int)); bit_count++) {
-        hash_value_temp = hash_value_temp >> 1;
-        hash_value_temp = hash_value_temp | (dist_fast->DistanceInnerProduct::compare(vertex, &hash_function[dimension_ * ((8 * sizeof(unsigned int)) * i + bit_count)], dimension_) > 0 ? 0x80000000 : 0);
+    for (unsigned int num_integer = 0; num_integer < (hash_bitwidth_ >> 5); num_integer++) {
+      std::bitset<32> temp_bool;
+      for (unsigned int bit_count = 0; bit_count < 32; bit_count++) {
+        temp_bool.set(bit_count, (dist_fast->DistanceInnerProduct::compare(vertex, &hash_function_[dimension_ * (32 * num_integer + bit_count)], (unsigned)dimension_)) > 0);
       }
-      hash_value[i] = hash_value_temp;
+      for (unsigned bit_count = 0; bit_count < 32; bit_count++) {
+        hashed_set_[num_integer] = (unsigned)(temp_bool.to_ulong());
+      }
     }
   }
+  auto e = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> diff = e - s;
+//    std::cout << "HashedSet generation time: " << diff.count() * 1000 << std::endl;;
 
-  std::ofstream file_hash_value(file_name, std::ios::binary | std::ios::out);
+  std::ofstream file_hashed_set(file_name, std::ios::binary | std::ios::out);
+  hashed_set_ = (unsigned int*)(opt_graph_ + node_size * nd_); 
   for (unsigned int i = 0; i < nd_; i++) {
-    hash_value = (unsigned int*)(opt_graph_ + node_size * i + data_len + neighbor_len); 
-    for (unsigned int j = 0; j < (hash_bitwidth >> 5); j++) { 
-      file_hash_value.write((char*)(hash_value + j), 4);
+    for (unsigned int j = 0; j < (hash_len >> 2); j++) { 
+      file_hashed_set.write((char*)(hashed_set_ + (hash_len >> 2) * i + j), 4);
     }
   }
-  file_hash_value.close();
+  file_hashed_set.close();
 }
-bool IndexSSG::LoadHashFunction (char* file_name) {
+bool IndexSSG::ReadHashFunction (char* file_name) {
   std::ifstream file_hash_function(file_name, std::ios::binary);
+  uint64_t hash_len = (hash_bitwidth_ >> 3);
   if (file_hash_function.is_open()) {
-    std::cout << "LoadHashFunction" << std::endl;
+    std::cerr << "ReadHashFunction" << std::endl;
     unsigned int hash_bitwidth_temp;
     file_hash_function.read((char*)&hash_bitwidth_temp, sizeof(unsigned int));
-    if (hash_bitwidth != hash_bitwidth_temp) {
+    if (hash_bitwidth_ != hash_bitwidth_temp) {
       file_hash_function.close();
       return false;
     }
 
-    hash_function = (float*)(opt_graph_ + node_size * nd_);
-    file_hash_function.read((char*)hash_function, dimension_ * hash_bitwidth * sizeof(float));
+    hash_function_ = (float*)(opt_graph_ + node_size * nd_ + hash_len * nd_);
+    file_hash_function.read((char*)hash_function_, dimension_ * hash_bitwidth_ * sizeof(float));
     file_hash_function.close();
     return true;
   }
@@ -925,17 +924,18 @@ bool IndexSSG::LoadHashFunction (char* file_name) {
     return false;
   }
 }
-bool IndexSSG::LoadHashValue (char* file_name) {
-  std::ifstream file_hash_value(file_name, std::ios::binary);
-  if (file_hash_value.is_open()) {
-    std::cout << "LoadHashVector" << std::endl;
+bool IndexSSG::ReadHashedSet (char* file_name) {
+  std::ifstream file_hashed_set(file_name, std::ios::binary);
+  uint64_t hash_len = (hash_bitwidth_ >> 3);
+  if (file_hashed_set.is_open()) {
+    std::cerr << "ReadHashedSet" << std::endl;
+    hashed_set_ = (unsigned int*)(opt_graph_ + node_size * nd_);
     for (unsigned int i = 0; i < nd_; i++) {
-      hash_value = (unsigned int*)(opt_graph_ + node_size * i + data_len + neighbor_len);
-      for (unsigned int j = 0; j < (hash_bitwidth >> 5); j++) {
-        file_hash_value.read((char*)(hash_value + j), 4);
+      for (unsigned int j = 0; j < (hash_len >> 2); j++) {
+        file_hashed_set.read((char*)(hashed_set_ + (hash_len >> 2) * i + j), 4);
       }
     }
-    file_hash_value.close();
+    file_hashed_set.close();
     
     return true;
   }
@@ -944,12 +944,12 @@ bool IndexSSG::LoadHashValue (char* file_name) {
   }
 }
 
-void IndexSSG::GenerateQueryHash (const float* query, unsigned* hashed_query, unsigned hash_size) {
+void IndexSSG::QueryHash (const float* query, unsigned* hashed_query, unsigned hash_size) {
   DistanceFastL2 *dist_fast = (DistanceFastL2 *)distance_;
   for (unsigned int num_integer = 0; num_integer < hash_size; num_integer++) {
     std::bitset<32> temp_bool;
     for (unsigned int bit_count = 0; bit_count < 32; bit_count++) {
-      temp_bool.set(bit_count, (dist_fast->DistanceInnerProduct::compare(query, &hash_function[dimension_ * (32 * num_integer + bit_count)], dimension_) > 0));
+      temp_bool.set(bit_count, (dist_fast->DistanceInnerProduct::compare(query, &hash_function_[dimension_ * (32 * num_integer + bit_count)], dimension_) > 0));
     }
     for (unsigned int bit_count = 0; bit_count < 32; bit_count++) {
       hashed_query[num_integer] = (unsigned)(temp_bool.to_ulong());
@@ -957,86 +957,73 @@ void IndexSSG::GenerateQueryHash (const float* query, unsigned* hashed_query, un
   }
 }
 
-unsigned int IndexSSG::FilterNeighbors (const __m256i* hashed_query_avx, std::vector<HashNeighbor>& theta_queue, const unsigned* neighbors, const unsigned MaxM, const unsigned hash_size) {
-      unsigned int prefetch_counter = 0;
-      for (; prefetch_counter < (MaxM >> 2); prefetch_counter++) {
-        unsigned int id = neighbors[prefetch_counter];
-        for (unsigned n = 0; n < hash_size; n += 8)
-          _mm_prefetch(opt_graph_ + node_size * id + data_len + neighbor_len + n * sizeof(unsigned), _MM_HINT_T0);
-      }
+unsigned int IndexSSG::CandidateSelection (const __m256i* hashed_query_avx, std::vector<HashNeighbor>& selected_pool, const unsigned* neighbors, const unsigned MaxM, const unsigned hash_size) {
+  unsigned int prefetch_counter = 0;
+  for (; prefetch_counter < (MaxM >> 1); prefetch_counter++) {
+    unsigned int id = neighbors[prefetch_counter];
+    for (unsigned n = 0; n < hash_size; n += 1)
+      _mm_prefetch(hashed_set_ + hash_size * id + n, _MM_HINT_T0);
+  }
 
-      unsigned long long hamming_result[4];
-      unsigned int theta_queue_size = 0;
-      unsigned int theta_queue_size_limit = (unsigned int)ceil(MaxM * threshold_percent);
-      HashNeighbor hamming_distance_max(0, 0);
-      std::vector<HashNeighbor>::iterator index;
-     
-      for (unsigned m = 0; m < MaxM; ++m) {
-        if (prefetch_counter < MaxM) {
-          unsigned int prefetch_id = neighbors[prefetch_counter];
-          prefetch_counter++;
-          for (unsigned n = 0; n < hash_size; n += 8)
-            _mm_prefetch(opt_graph_ + node_size * prefetch_id + data_len + neighbor_len + n * sizeof(unsigned), _MM_HINT_T0);
-        }
-        unsigned int id = neighbors[m];
-#ifdef GUIDED_BY_EXACT_THETA
-        float* data = (float*)(opt_graph_ + node_size * id);
-        float norm = *data;
-        data++;
-        float inner_product = dist_fast->DistanceInnerProduct::compare(query, data, dimension_);
-        float theta = std::acos(inner_product / std::sqrt(query_norm * norm)) * 180.0 / 3.14159265;
-        HashNeighbor cat_theta_id(id, theta);
-        theta_queue[m] = cat_theta_id;
-      }
-      std::sort(theta_queue.begin(), theta_queue.begin() + MaxM);
-#else
-        unsigned int hamming_distance = 0;
+  unsigned long long hamming_result[4];
+  unsigned int selected_pool_size = 0;
+  unsigned int selected_pool_size_limit = (unsigned int)ceil(MaxM * tau_);
+  HashNeighbor hamming_distance_max(0, 0);
+  std::vector<HashNeighbor>::iterator index;
+
+  for (unsigned m = 0; m < MaxM; ++m) {
+    if (prefetch_counter < MaxM) {
+      unsigned int id = neighbors[prefetch_counter];
+      for (unsigned n = 0; n < hash_size; n += 1)
+        _mm_prefetch(hashed_set_ + hash_size * id + n, _MM_HINT_T0);
+      prefetch_counter++;
+    }
+    unsigned int id = neighbors[m];
+    unsigned int hamming_distance = 0;
+    unsigned int* hashed_set_address = hashed_set_ + hash_size * id;
 #ifdef __AVX__
-        unsigned int* hash_value_address = (unsigned int*)(opt_graph_ + node_size * id + data_len + neighbor_len);
-        for (unsigned int i = 0; i < (hash_size >> 3); i++) {
-          __m256i hash_value_avx, hamming_result_avx;
-          hash_value_avx = _mm256_loadu_si256((__m256i*)(hash_value_address));
-          hamming_result_avx = _mm256_xor_si256(hashed_query_avx[i], hash_value_avx);
+  for (unsigned int i = 0; i < (hash_size >> 3); i++) {
+    __m256i hashed_set_avx, hamming_result_avx;
+    hashed_set_avx = _mm256_loadu_si256((__m256i*)(hashed_set_address));
+    hamming_result_avx = _mm256_xor_si256(hashed_query_avx[i], hashed_set_avx);
 #ifdef __AVX512VPOPCNTDQ__
-          hamming_result_avx = _mm256_popcnt_epi64(hamming_result_avx);
-          _mm256_storeu_si256((__m256i*)&hamming_result, hamming_result_avx);
-          for (unsigned int j = 0; j < 4; j++)
-            hamming_distance += hamming_result[j];
+    hamming_result_avx = _mm256_popcnt_epi64(hamming_result_avx);
+    _mm256_storeu_si256((__m256i*)&hamming_result, hamming_result_avx);
+    for (unsigned int j = 0; j < 4; j++)
+      hamming_distance += hamming_result[j];
 #else
-          _mm256_storeu_si256((__m256i*)&hamming_result, hamming_result_avx);
-          for (unsigned int j = 0; j < 4; j++)
-            hamming_distance += _popcnt64(hamming_result[j]);
+    _mm256_storeu_si256((__m256i*)&hamming_result, hamming_result_avx);
+    for (unsigned int j = 0; j < 4; j++)
+      hamming_distance += _popcnt64(hamming_result[j]);
 #endif
-          hash_value_address += 8;
-        }
+    hashed_set_address += 8;
+  }
 #else
-        for (unsigned int num_integer = 0; num_integer < hash_bitwidth / 32; num_integer++) {
-          unsigned int* hash_value_address = (unsigned int*)(opt_graph_ + node_size * nd_ + hash_len * id);
-          unsigned int hamming_result = hashed_query[num_integer] ^ hash_value_address[num_integer]; 
-          hamming_distance += __builtin_popcount(hamming_result);
-        }
+  for (unsigned int num_integer = 0; num_integer < hash_bitwidth / 32; num_integer++) {
+    unsigned int hamming_result = hashed_query[num_integer] ^ hashed_set_address[num_integer]; 
+    hamming_distance += __builtin_popcount(hamming_result);
+  }
 #endif
-        HashNeighbor cat_hamming_id(id, hamming_distance);
-        if ((theta_queue_size_limit <= theta_queue_size) && (hamming_distance < hamming_distance_max.distance)) {
-          theta_queue[theta_queue_size] = theta_queue[hamming_distance_max.id];
-          theta_queue[hamming_distance_max.id] = cat_hamming_id;
-          index = std::max_element(theta_queue.begin(), theta_queue.begin() + theta_queue_size_limit);
-          hamming_distance_max.id = std::distance(theta_queue.begin(), index);
-          hamming_distance_max.distance = theta_queue[hamming_distance_max.id].distance;
-          theta_queue_size++;
-        }
-        else {
-          theta_queue[theta_queue_size] = cat_hamming_id;
-          theta_queue_size++;
-          if (theta_queue_size == theta_queue_size_limit) {
-            index = std::max_element(theta_queue.begin(), theta_queue.begin() + theta_queue_size);
-            hamming_distance_max.id = std::distance(theta_queue.begin(), index);
-            hamming_distance_max.distance = theta_queue[hamming_distance_max.id].distance;
-          }
-        }
-      }
-#endif
-  return theta_queue_size_limit;
+  HashNeighbor cat_hamming_id(id, hamming_distance);
+  if ((selected_pool_size_limit < selected_pool_size) && (hamming_distance < hamming_distance_max.distance)) {
+    selected_pool[selected_pool_size] = selected_pool[hamming_distance_max.id];
+    selected_pool[hamming_distance_max.id] = cat_hamming_id;
+    index = std::max_element(selected_pool.begin(), selected_pool.begin() + selected_pool_size_limit);
+    hamming_distance_max.id = std::distance(selected_pool.begin(), index);
+    hamming_distance_max.distance = selected_pool[hamming_distance_max.id].distance;
+    selected_pool_size++;
+  }
+  else {
+    selected_pool[selected_pool_size] = cat_hamming_id;
+    selected_pool_size++;
+    if (selected_pool_size == selected_pool_size_limit) {
+      index = std::max_element(selected_pool.begin(), selected_pool.begin() + selected_pool_size);
+      hamming_distance_max.id = std::distance(selected_pool.begin(), index);
+      hamming_distance_max.distance = selected_pool[hamming_distance_max.id].distance;
+    }
+  }
+}
+  return selected_pool_size_limit;
 }
 #endif
 

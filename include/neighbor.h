@@ -156,8 +156,7 @@ static inline int InsertIntoPool(Neighbor *addr, unsigned K, Neighbor nn) {
   return right;
 }
 
-#ifdef THETA_GUIDED_SEARCH
-#ifdef GUIDED_BY_APPROX_THETA
+#ifdef ADA_NNS
 struct HashNeighbor{
   unsigned id;
   unsigned distance;
@@ -169,20 +168,6 @@ struct HashNeighbor{
       return distance < other.distance;
   }
 };
-#endif
-#ifdef GUIDED_BY_EXACT_THETA
-struct HashNeighbor{
-  unsigned id;
-  float distance;
-
-  HashNeighbor() = default;
-  HashNeighbor(unsigned id, float distance = -1.0) : id{id}, distance{distance}{}
-
-  inline bool operator<(const HashNeighbor &other) const {
-      return distance < other.distance;
-  }
-};
-#endif
 #endif
 }  // namespace efanna2e
 

@@ -27,15 +27,17 @@ endif()
 add_subdirectory(third_party/pybind11)
 
 # Compile flags
-add_definitions(-std=c++11 -O3 -lboost -ltcmalloc_minimal -march=native -Wall -DINFO -g3 -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free)
+add_definitions(-std=c++11 -O3 -lboost -ltcmalloc_minimal -march=native -Wall -DINFO -g3)
 
 # Add define
 add_definitions(-DEVAL_RECALL)
-#add_definitions(-DTHETA_GUIDED_SEARCH -DGUIDED_BY_APPROX_THETA)
-#add_definitions(-DTHETA_GUIDED_SEARCH -DGUIDED_BY_EXACT_THETA)
+add_definitions(-DADA_NNS)
+#add_definitions(-DHUGE_PAGE)
 #add_definitions(-DTHREAD_LATENCY)
 #add_definitions(-DPROFILE)
 #add_definitions(-DGET_MISS_TRAVERSE)
+#add_definitions(-DGET_VISITED)
+#add_definitions(-DGET_NHOPS)
 
 # Source codes
 add_subdirectory(src)
