@@ -1,4 +1,4 @@
-#SSG with ADA-NNS 
+# SSG with ADA-NNS 
 
 This repository is NSSG with greey search method (baseline) and ADA-NNS.
 
