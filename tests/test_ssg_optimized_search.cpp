@@ -167,7 +167,6 @@ int main(int argc, char** argv) {
   
   unsigned int topk_hit = 0;
   for (unsigned int i = 0; i < query_num; i++) {
-    unsigned int topk_local_hit = 0;
     for (unsigned int j = 0; j < K; j++) {
       for (unsigned int k = 0; k < K; k++) {
         if (res[i][j] == *(ground_truth_load + i * ground_truth_dim + k)) {
@@ -190,15 +189,15 @@ int main(int argc, char** argv) {
   std::cerr << "99% latency: " << latency_stats[(unsigned long long)(0.999 * query_num)] << "ms"<< std::endl;
 #endif
 #ifdef GET_DIST_COMP
-  std::cout << "========Distance Compute Report========" << std::endl;
-  std::cout << "# of distance compute: " << index.GetTotalDistComp() << std::endl;
-  std::cout << "# of missed distance compute: " << index.GetTotalDistCompMiss() << std::endl;
-  std::cout << "Ratio: " << (float)index.GetTotalDistCompMiss() / index.GetTotalDistComp()  * 100 << " %" << std::endl;
-  std::cout << "Speedup: " << (float)(index.Get_nd()) * query_num / index.GetTotalDistComp() << std::endl;
-  std::cout << "=====================================" << std::endl;
+  std::cerr << "========Distance Compute Report========" << std::endl;
+  std::cerr << "# of distance compute: " << index.GetTotalDistComp() << std::endl;
+  std::cerr << "# of missed distance compute: " << index.GetTotalDistCompMiss() << std::endl;
+  std::cerr << "Ratio: " << (float)index.GetTotalDistCompMiss() / index.GetTotalDistComp()  * 100 << " %" << std::endl;
+  std::cerr << "Speedup: " << (float)(index.Get_nd()) * query_num / index.GetTotalDistComp() << std::endl;
+  std::cerr << "=====================================" << std::endl;
 #endif
 #ifdef PROFILE
-  std::cout << "=======Profile Report========" << std::endl;
+  std::cerr << "=======Profile Report========" << std::endl;
   double* timer = (double*)calloc(4, sizeof(double));
   for (unsigned int tid = 0; tid < num_threads; tid++) {
     timer[0] += index.GetTimer(tid * 4); // visited list init time
@@ -207,15 +206,15 @@ int main(int argc, char** argv) {
     timer[3] += index.GetTimer(tid * 4 + 3); // fast L2 distance compute time
   }
 #ifdef ADA_NNS
-  std::cout << "visited_init time: " << timer[0] / query_num << "ms" << std::endl;
-  std::cout << "query_hash time: " << timer[1] / query_num << "ms" << std::endl;
-  std::cout << "cand_select time: " << timer[2] / query_num << "ms" << std::endl;
-  std::cout << "dist time: " << timer[3] / query_num << "ms" << std::endl;
+  std::cerr << "visited_init time: " << timer[0] / query_num << "ms" << std::endl;
+  std::cerr << "query_hash time: " << timer[1] / query_num << "ms" << std::endl;
+  std::cerr << "cand_select time: " << timer[2] / query_num << "ms" << std::endl;
+  std::cerr << "dist time: " << timer[3] / query_num << "ms" << std::endl;
 #else
-  std::cout << "visited_init time: " << timer[0] / query_num << "ms" << std::endl;
-  std::cout << "dist time: " << timer[3] / query_num << "ms" << std::endl;
+  std::cerr << "visited_init time: " << timer[0] / query_num << "ms" << std::endl;
+  std::cerr << "dist time: " << timer[3] / query_num << "ms" << std::endl;
 #endif
-  std::cout << "=====================================" << std::endl;
+  std::cerr << "=====================================" << std::endl;
 #endif
 
   return 0;
