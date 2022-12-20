@@ -23,7 +23,7 @@ void save_result(char* filename, std::vector<std::vector<unsigned> >& results) {
 int main(int argc, char** argv) {
 #ifdef ADA_NNS
   if (argc < 11) {
-    std::cout << " data_file query_file ssg_path L K result_path ground_truth_path hash_bitwidth tau num_threads [seed]"
+    std::cout << " data_file query_file ssg_path L K result_path ground_truth_path tau hash_bitwidth num_threads [seed]"
               << std::endl;
     exit(-1);
   }
