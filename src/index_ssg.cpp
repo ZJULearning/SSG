@@ -547,7 +547,7 @@ void IndexSSG::SearchWithOptGraph(const float *query, boost::dynamic_bitset<>& f
 #ifdef PROFILE
       auto cand_select_start = std::chrono::high_resolution_clock::now();
 #endif
-      unsigned int selected_pool_size = CandidateSelection(hashed_query_avx, selected_pool, neighbors, MaxM, hash_size);
+      unsigned int selected_pool_size = CandidateSelection(hashed_query_avx, selected_pool, flags, neighbors, MaxM, hash_size);
 #ifdef PROFILE
       auto cand_select_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> cand_select_diff = cand_select_end - cand_select_start;
@@ -568,7 +568,15 @@ void IndexSSG::SearchWithOptGraph(const float *query, boost::dynamic_bitset<>& f
       for (unsigned m = 0; m < MaxM; ++m) {
         unsigned id = neighbors[m];
 #endif
-        if (flags[id]) continue;
+#ifdef GET_VISITED
+        total_neighbors++;
+#endif
+        if (flags[id]) {
+#ifdef GET_VISITED
+          visited_neighbors++;
+#endif
+          continue;
+        }
         flags[id] = 1;
         float *data = (float *)(opt_graph_ + node_size * id);
         float norm = *data;
@@ -957,72 +965,84 @@ void IndexSSG::QueryHash (const float* query, unsigned* hashed_query, unsigned h
   }
 }
 
-unsigned int IndexSSG::CandidateSelection (const __m256i* hashed_query_avx, std::vector<HashNeighbor>& selected_pool, const unsigned* neighbors, const unsigned MaxM, const unsigned hash_size) {
+unsigned int IndexSSG::CandidateSelection (const __m256i* hashed_query_avx, std::vector<HashNeighbor>& selected_pool, boost::dynamic_bitset<>& flags, const unsigned* neighbors, const unsigned MaxM, const unsigned hash_size) {
+  unsigned int new_MaxM = 0;
+  unsigned int selected_pool_size_limit = (unsigned int)ceil(MaxM * tau_);
+  for (unsigned m = 0; m < MaxM; ++m) {
+    unsigned int id = neighbors[m];
+    if (flags[id]) continue;
+    HashNeighbor cat_hamming_id (id, 0);
+    selected_pool[new_MaxM] = cat_hamming_id;
+    new_MaxM++;
+  }
+  if (new_MaxM < selected_pool_size_limit) {
+    return new_MaxM;
+  }
+  selected_pool_size_limit = (unsigned int)ceil(new_MaxM * tau_);
   unsigned int prefetch_counter = 0;
-  for (; prefetch_counter < (MaxM >> 1); prefetch_counter++) {
-    unsigned int id = neighbors[prefetch_counter];
-    for (unsigned n = 0; n < hash_size; n += 1)
+  for (; prefetch_counter < new_MaxM; prefetch_counter++) {
+    unsigned int id = selected_pool[prefetch_counter].id;
+    for (unsigned n = 0; n < hash_size; n += 8)
       _mm_prefetch(hashed_set_ + hash_size * id + n, _MM_HINT_T0);
   }
 
-  unsigned long long hamming_result[4];
+  uint64_t hamming_result[4];
   unsigned int selected_pool_size = 0;
-  unsigned int selected_pool_size_limit = (unsigned int)ceil(MaxM * tau_);
   HashNeighbor hamming_distance_max(0, 0);
   std::vector<HashNeighbor>::iterator index;
 
-  for (unsigned m = 0; m < MaxM; ++m) {
-    if (prefetch_counter < MaxM) {
-      unsigned int id = neighbors[prefetch_counter];
-      for (unsigned n = 0; n < hash_size; n += 1)
-        _mm_prefetch(hashed_set_ + hash_size * id + n, _MM_HINT_T0);
-      prefetch_counter++;
-    }
-    unsigned int id = neighbors[m];
+  for (unsigned m = 0; m < new_MaxM; ++m) {
+//    if (prefetch_counter < MaxM) {
+//      unsigned int id = neighbors[prefetch_counter];
+//      for (unsigned n = 0; n < hash_size; n += 8)
+//        _mm_prefetch(hashed_set_ + hash_size * id + n, _MM_HINT_T0);
+//      prefetch_counter++;
+//    }isited
+    unsigned int id = selected_pool[m].id;
     unsigned int hamming_distance = 0;
     unsigned int* hashed_set_address = hashed_set_ + hash_size * id;
 #ifdef __AVX__
-  for (unsigned int i = 0; i < (hash_size >> 3); i++) {
-    __m256i hashed_set_avx, hamming_result_avx;
-    hashed_set_avx = _mm256_loadu_si256((__m256i*)(hashed_set_address));
-    hamming_result_avx = _mm256_xor_si256(hashed_query_avx[i], hashed_set_avx);
+    for (unsigned int i = 0; i < (hash_size >> 3); i++) {
+      __m256i hashed_set_avx, hamming_result_avx;
+      hashed_set_avx = _mm256_loadu_si256((__m256i*)(hashed_set_address));
+      hamming_result_avx = _mm256_xor_si256(hashed_query_avx[i], hashed_set_avx);
 #ifdef __AVX512VPOPCNTDQ__
-    hamming_result_avx = _mm256_popcnt_epi64(hamming_result_avx);
-    _mm256_storeu_si256((__m256i*)&hamming_result, hamming_result_avx);
-    for (unsigned int j = 0; j < 4; j++)
-      hamming_distance += hamming_result[j];
+      hamming_result_avx = _mm256_popcnt_epi64(hamming_result_avx);
+      _mm256_storeu_si256((__m256i*)&hamming_result, hamming_result_avx);
+      for (unsigned int j = 0; j < 4; j++)
+        hamming_distance += hamming_result[j];
 #else
-    _mm256_storeu_si256((__m256i*)&hamming_result, hamming_result_avx);
-    for (unsigned int j = 0; j < 4; j++)
-      hamming_distance += _popcnt64(hamming_result[j]);
+      _mm256_storeu_si256((__m256i*)&hamming_result, hamming_result_avx);
+      for (unsigned int j = 0; j < 4; j++)
+        hamming_distance += _popcnt64(hamming_result[j]);
 #endif
-    hashed_set_address += 8;
-  }
+      hashed_set_address += 8;
+    }
 #else
-  for (unsigned int num_integer = 0; num_integer < hash_bitwidth / 32; num_integer++) {
-    unsigned int hamming_result = hashed_query[num_integer] ^ hashed_set_address[num_integer]; 
-    hamming_distance += __builtin_popcount(hamming_result);
-  }
+    for (unsigned int num_integer = 0; num_integer < hash_bitwidth / 32; num_integer++) {
+      unsigned int hamming_result = hashed_query[num_integer] ^ hashed_set_address[num_integer]; 
+      hamming_distance += __builtin_popcount(hamming_result);
+    }
 #endif
-  HashNeighbor cat_hamming_id(id, hamming_distance);
-  if ((selected_pool_size_limit < selected_pool_size) && (hamming_distance < hamming_distance_max.distance)) {
-    selected_pool[selected_pool_size] = selected_pool[hamming_distance_max.id];
-    selected_pool[hamming_distance_max.id] = cat_hamming_id;
-    index = std::max_element(selected_pool.begin(), selected_pool.begin() + selected_pool_size_limit);
-    hamming_distance_max.id = std::distance(selected_pool.begin(), index);
-    hamming_distance_max.distance = selected_pool[hamming_distance_max.id].distance;
-    selected_pool_size++;
-  }
-  else {
-    selected_pool[selected_pool_size] = cat_hamming_id;
-    selected_pool_size++;
-    if (selected_pool_size == selected_pool_size_limit) {
-      index = std::max_element(selected_pool.begin(), selected_pool.begin() + selected_pool_size);
+    HashNeighbor cat_hamming_id(id, hamming_distance);
+    if ((selected_pool_size_limit < selected_pool_size) && (hamming_distance < hamming_distance_max.distance) ) {
+      selected_pool[selected_pool_size] = selected_pool[hamming_distance_max.id];
+      selected_pool[hamming_distance_max.id] = cat_hamming_id;
+      index = std::max_element(selected_pool.begin(), selected_pool.begin() + selected_pool_size_limit);
       hamming_distance_max.id = std::distance(selected_pool.begin(), index);
       hamming_distance_max.distance = selected_pool[hamming_distance_max.id].distance;
+      selected_pool_size++;
+    }
+    else {
+      selected_pool[selected_pool_size] = cat_hamming_id;
+      selected_pool_size++;
+      if (selected_pool_size == selected_pool_size_limit) {
+        index = std::max_element(selected_pool.begin(), selected_pool.begin() + selected_pool_size);
+        hamming_distance_max.id = std::distance(selected_pool.begin(), index);
+        hamming_distance_max.distance = selected_pool[hamming_distance_max.id].distance;
+      }
     }
   }
-}
   return selected_pool_size_limit;
 }
 #endif
