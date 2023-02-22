@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
     exit(-1);
   }
 
-  if (argc < 14) {
+  if (argc > 11) {
     sub_id = (int)atoi(argv[11]);
     if (argc == 13) {
       unsigned seed = (unsigned)atoi(argv[12]);
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
     exit(-1);
   }
 
-  if (argc < 12) {
+  if (argc > 9) {
     sub_id = (int)atoi(argv[9]);
     if (argc == 11) {
       unsigned seed = (unsigned)atoi(argv[10]);
@@ -231,6 +231,13 @@ int main(int argc, char** argv) {
   std::cerr << "visited_init time: " << timer[0] / query_num << "ms" << std::endl;
   std::cerr << "dist time: " << timer[3] / query_num << "ms" << std::endl;
 #endif
+  std::cerr << "=====================================" << std::endl;
+#endif
+#ifdef GET_VISITED
+  std::cerr << "=======Profile Report========" << std::endl;
+  std::cerr << "total_neighbors: " << index.GetTotalNeighbors() << std::endl;
+  std::cerr << "visited_neighbors: " << index.GetVisitedNeighbors() << std::endl;
+  std::cerr << "visited_rate: " << (float)(index.GetVisitedNeighbors()) / index.GetTotalNeighbors() * 100 << std::endl;
   std::cerr << "=====================================" << std::endl;
 #endif
 
