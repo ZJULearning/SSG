@@ -240,7 +240,7 @@ if [[ ${#} -eq 1 ]]; then
         for tt in ${TAU[@]}; do
           for l_size in ${L_SIZE[@]}; do
             declare -i l=l_size
-          ssg_deep100M ${l} ${k} ADA-NNS ${t} ${tt}
+            ssg_deep100M ${l} ${k} ADA-NNS ${t} ${tt} 512
           done
         done
       done
