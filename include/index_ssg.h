@@ -50,6 +50,7 @@ class IndexSSG : public Index {
 #endif
 #ifdef PROFILE
   void SetTimer(const uint32_t num_threads) { profile_time.resize(num_threads * 4, 0.0); }
+  void InitTimer() { fill(profile_time.begin(), profile_time.end(), 0.0); }
   double GetTimer(const uint32_t idx) { return profile_time[idx]; }
 #endif
 #ifdef GET_VISITED

@@ -147,6 +147,10 @@ int main(int argc, char** argv) {
     }
   }
 
+#ifdef PROFILE
+  index.InitTimer();
+#endif
+
   auto s = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for schedule(dynamic, 1)
   for (unsigned i = 0; i < query_num; i++) {
