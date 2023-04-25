@@ -54,10 +54,10 @@ The parameters used to build each graphs are as follows.
 | SIFT1M      | 200 | 200   | 10    | 10  | 100 |
 | GIST1M      | 400 | 400   | 12    | 15  | 100 |
 | CRAWL       | 400 | 420   | 12    | 15  | 100 |
-| DEEP1M      | 200 | 200   | 10    | 10  | 100 |
-| DEEP100M    | 400 | 420   | 12    | 20  | 200 |
+| DEEP1M      | 400 | 420   | 12    | 20  | 200 |
 | MSONG       | 200 | 200   | 10    | 10  | 100 |
 | GLOVE-100   | 400 | 420   | 12    | 20  | 200 |
+| DEEP100M    | 400 | 420   | 12    | 20  | 200 |
 
 #### Step 2. Build NSSG index and search via NSSG index
 
@@ -72,7 +72,7 @@ The parameters used to build each indices are as follows.
 | CRAWL       | 500 | 40   | 60    |
 | DEEP1M      | 500 | 40   | 60    |
 | MSONG       | 500 | 40   | 60    |
-| GLOVE-100   | 400 | 420  | 12    |
+| GLOVE-100   | 500 | 50   | 60    |
 | DEEP100M    | 500 | 40   | 60    |
 
 To use the greedy search, use the `tests/evaluate_baseline.sh` script:
