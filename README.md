@@ -1,6 +1,11 @@
 SSG : Satellite System Graph For Approximate Nearest Neighbor Search
 ======
 
+## Cooperation
+
+If you are interested in the research line of nearest neighbor search or application and looking for a cooperation please feel free to contect me via fc731097343@gmail.com
+
+
 SSG is a graph-based approximate nearest neighbor search (ANNS) algorithm. It provides a flexible and efficient solution for the metric-free large-scale ANNS on dense real vectors.
 It implements the algorithm of our paper: [Satellite System Graph: Towards the Efficiency Up-Boundary of Graph-Based Approximate Nearest Neighbor Search](https://arxiv.org/abs/1907.06146)
 
